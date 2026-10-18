@@ -204,7 +204,7 @@ Shadow's Stealth Mode is engineered to provide powerful AI assistance while rema
 
 | Component | What It Does |
 |-----------|-------------|
-| 🛡️ **Screen Capture Protection** | Invisible to screen recording, browser screen-share, Zoom, Teams, Google Meet, and GoToMeeting — uses low-level `WDA_EXCLUDEFROMCAPTURE` API |
+| 🛡️ **Screen Capture Protection** | While hidden the window doesn't exist on the desktop at all — invisible to any screen recording, browser share, Zoom, Teams, Google Meet, and GoToMeeting; peeks (`Alt+Z`) are click-through and auto-hide |
 | 🤫 **Silent Operation** | Zero system sounds, zero focus stealing — type in your exam while Shadow overlays information |
 | 🔒 **Taskbar & Alt+Tab Immunity** | Hidden from taskbar, Alt+Tab switcher, and application monitoring via `WS_EX_TOOLWINDOW` |
 | 👻 **Ghost Mode** (`Alt+X`) | Click-through UI — interact with apps *underneath* Shadow while seeing its content |
@@ -661,8 +661,8 @@ SCROLL_INTERVAL_MS=70    # Higher = less frequent
 | **Desktop shell** | pywebview (WinForms backend) |
 | **Speech-to-text** | Deepgram SDK v3 |
 | **LLM clients** | OpenAI-compatible SDK (Groq, Cerebras, Gemini, OpenRouter) |
-| **Global hotkeys** | pynput |
-| **Win32 integration** | ctypes — capture protection, transparency, window management |
+| **Global hotkeys** | Win32 `RegisterHotKey` via ctypes (no input hooks) |
+| **Win32 integration** | ctypes — hide/peek window management, screen-share detection, hotkeys |
 | **Frontend** | Vanilla HTML/CSS/JS with WebSocket streaming |
 | **Config** | pydantic-settings + python-dotenv |
 

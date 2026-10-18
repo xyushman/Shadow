@@ -27,9 +27,11 @@ class PersistentContextManager:
             'candidate_name': '',
             'target_company': '',
             'target_role': '',
+            'job_profile': '',
             'complete_resume': '',        # UNLIMITED - Full resume
             'complete_job_description': '',  # UNLIMITED - Full job description
             'focus_areas': [],
+            'interview_type': 'live_interview',   # live_interview | auto | amazon_oa | infosys_oa | tcs_oa
             'additional_context': {},
             'created_at': None
         }
@@ -43,9 +45,11 @@ class PersistentContextManager:
             'candidate_name': onboarding_data.get('name', ''),
             'target_company': onboarding_data.get('company', ''),
             'target_role': onboarding_data.get('role', ''),
+            'job_profile': onboarding_data.get('jobProfile', ''),
             'complete_resume': onboarding_data.get('resume', ''),  # FULL CONTENT
             'complete_job_description': onboarding_data.get('objectives', ''),  # FULL CONTENT
             'focus_areas': onboarding_data.get('focus', []),
+            'interview_type': onboarding_data.get('interviewType', 'live_interview'),
             'created_at': datetime.now().isoformat()
         })
         self.is_initialized = True

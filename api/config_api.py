@@ -164,7 +164,7 @@ async def verify_ai_provider(request: ProviderVerifyRequest):
                 model_name=request.model
             )
             if is_valid:
-                return {"success": True}
+                return {"success": True, "working_key": i + 1, "total_keys": len(api_keys)}
             print(f"⚠️ Key {i+1}/{len(api_keys)} failed for {request.name}, trying next...")
         
         return {"success": False}
@@ -221,7 +221,7 @@ async def verify_vision_ai_provider(request: ProviderVerifyRequest):
                 request_params=model_config.get("requestParams")
             )
             if is_valid:
-                return {"success": True}
+                return {"success": True, "working_key": i + 1, "total_keys": len(api_keys)}
             print(f"⚠️ Vision key {i+1}/{len(api_keys)} failed for {request.name}, trying next...")
         
         return {"success": False}

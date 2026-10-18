@@ -120,6 +120,11 @@ class VisionManager:
         
         print(f"🔍 Analyzing {len(screenshots)} screenshots with {self.provider_name}-{self.model_name}")
         
+        # Proactive round-robin: start every request on the next key so
+        # multiple keys (e.g. several Gemini keys) share rate limits evenly.
+        if len(self.api_keys) > 1:
+            self._rotate_key()
+
         # Try all available keys — instant retry on any error
         max_attempts = len(self.api_keys)
         last_error = None
@@ -305,7 +310,14 @@ class VisionService:
         
         # Generate comprehensive coding prompt
         prompt = self.generate_coding_analysis_prompt(languages)
-        
+        # Adjust vision prompt hint based on session type / interview_type from context
+        try:
+            ctx = self.context_manager.get_complete_context() if self.context_manager else {}
+            itype = (ctx.get('persistent') or {}).get('interview_type', 'live_interview')
+            if itype and itype != 'live_interview':
+                prompt = f"Session type: {itype}. Adapt analysis accordingly.\n\n" + prompt
+        except Exception:
+            pass
         # Perform vision analysis
         return await vision_manager.analyze_screenshots(prompt, screenshots, languages)
     

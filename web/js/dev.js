@@ -119,6 +119,16 @@ export function autofillForTesting() {
         });
     }
 
+    // Session type preset (optional, default live_interview)
+    const sessionTypeRadios = document.querySelectorAll('input[name="session-type"]');
+    if (sessionTypeRadios && sessionTypeRadios.length) {
+        sessionTypeRadios.forEach(r => { if (r.value === 'live_interview') r.checked = true; });
+    }
+
+    // Job profile preset
+    const jobProfileSelect = document.getElementById('user-job-profile');
+    if (jobProfileSelect) jobProfileSelect.value = 'full-stack-developer';
+
     if (onboardingForm.resume) onboardingForm.resume.value = devData.resume;
     if (onboardingForm.objectives) onboardingForm.objectives.value = devData.objectives;
 

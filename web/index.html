@@ -55,6 +55,19 @@
                             <input type="text" id="user-name" placeholder="Your Name" required>
                             <input type="text" id="user-company" placeholder="Company You're Interviewing With"
                                 required>
+                            <select id="user-job-profile" aria-label="Job Profile">
+                                <option value="">Select Job Profile (optional)</option>
+                                <option value="software-engineer">Software Engineer</option>
+                                <option value="frontend-developer">Frontend Developer</option>
+                                <option value="backend-developer">Backend Developer</option>
+                                <option value="full-stack-developer">Full Stack Developer</option>
+                                <option value="data-scientist">Data Scientist</option>
+                                <option value="ml-engineer">Machine Learning Engineer</option>
+                                <option value="devops-sre">DevOps / SRE</option>
+                                <option value="qa-engineer">QA Engineer</option>
+                                <option value="system-design">System Design / Architect</option>
+                                <option value="product-manager">Product Manager (Technical)</option>
+                            </select>
                             <input type="text" id="user-role" placeholder="Target Role" required>
                             <textarea id="user-resume" placeholder="Paste your resume text here..." required></textarea>
                         </fieldset>
@@ -72,6 +85,41 @@
                             </div>
                         </fieldset>
                     </div>
+                    <fieldset>
+                        <legend>Session Type</legend>
+                        <div class="session-type-grid" id="session-type-grid">
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="live_interview" checked>
+                                <span class="session-type-title">Live Interview</span>
+                                <small>Real-time spoken interview coaching</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="auto">
+                                <span class="session-type-title">Auto</span>
+                                <small>Adapt to whatever the session throws at you</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="amazon_oa">
+                                <span class="session-type-title">Amazon OA</span>
+                                <small>Coding + work-style (Leadership Principles)</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="infosys_oa">
+                                <span class="session-type-title">Infosys OA</span>
+                                <small>Coding only</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="tcs_oa">
+                                <span class="session-type-title">TCS OA</span>
+                                <small>Aptitude + coding</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="session-type" value="all_oa">
+                                <span class="session-type-title">All-in-One OA</span>
+                                <small>Combination of all OA types</small>
+                            </label>
+                        </div>
+                    </fieldset>
                     <fieldset>
                         <legend>Job Description / Requirements</legend>
                         <textarea id="user-objectives"
@@ -184,6 +232,10 @@
                         <div class="advanced-info-box">
                             <p>Manage raw API keys and model lists for all available providers. Changes saved here will
                                 modify <code>ai_providers.json</code> and <code>.env</code>.</p>
+                            <p>Add multiple keys per provider (e.g. several Gemini keys) with the <strong>+</strong>
+                                button — Shadow round-robins through them on every request and fails over instantly on
+                                rate-limit or auth errors. <em>Test Connection</em> validates keys in order and reports
+                                which one responded.</p>
                         </div>
 
                         <div class="deepgram-config">

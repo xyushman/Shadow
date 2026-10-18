@@ -1,5 +1,7 @@
 # 🕵️ Proctoring Stealth Guide - Undetectable AI Assistant Usage
 
+> **⚠️ Legacy guide:** The transparency/`WDA_EXCLUDEFROMCAPTURE` instructions below predate the current **hide-by-default stealth** mode (window fully hidden during sessions, `Alt+Z` click-through peeks that auto-hide). Prefer the behavior described in the README; the detection guidance in this document still applies.
+
 This guide explains how to use your AI assistant application completely undetectably during proctored exams, interviews, or monitored sessions.
 
 ## 🎯 How Proctoring Software Detects Cheating
