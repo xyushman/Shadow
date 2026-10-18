@@ -62,6 +62,7 @@ def get_peek_seconds() -> float:
 # These flags are used with the SetWindowDisplayAffinity function.
 # WDA_EXCLUDEFROMCAPTURE is a comprehensive flag that prevents the window from being
 # captured by most common methods, rendering it as a black rectangle in recordings.
+WDA_MONITOR = 0x00000001
 WDA_EXCLUDEFROMCAPTURE = 0x00000011
 SW_HIDE = 0
 SW_SHOW = 5
@@ -1744,14 +1745,11 @@ def apply_capture_protection(window):
                 break
 
     # --- Optional: old blackout mode via STEALTH_MODE env var ---
-    # Read via os.environ OR .env file: nothing calls load_dotenv(), so an
-    # os.environ-only lookup silently ignored .env (STEALTH_MODE lives there).
     stealth_mode = (os.environ.get("STEALTH_MODE") or _ENV_FILE_VALUES.get("STEALTH_MODE") or "invisible").strip().lower()
     if stealth_mode == "blackout":
-        print(f"🛡️ [BLACKOUT MODE] Applying WDA_EXCLUDEFROMCAPTURE (0x{WDA_EXCLUDEFROMCAPTURE:08X}) to window {hex(hwnd)}...")
-        success = _user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
+        print(f"🛡️ [BLACKOUT MODE] Applying WDA_MONITOR (0x{WDA_MONITOR:08X}) — black rectangle in capture")
+        success = _user32.SetWindowDisplayAffinity(hwnd, WDA_MONITOR)
         if success:
-            print("   🎯 Window will appear as BLACK RECTANGLE in recordings/screen sharing")
             window_manager.set_window_handle(hwnd)
             window_manager.hide_from_taskbar()
             window_manager.start_screen_share_monitor()
@@ -1760,36 +1758,39 @@ def apply_capture_protection(window):
         else:
             error_code = ctypes.GetLastError()
             print(f"❌ FAILED: SetWindowDisplayAffinity failed! Error Code: {error_code}")
-            print("   🚨 WARNING: Window WILL be visible in screen recordings!")
             return False
 
-    # --- Default: HIDE-BY-DEFAULT MODE (window not capturable because it
-    #     is simply not on screen) ---
+    if stealth_mode in ("hide", "hide-by-default", "invisible-hide"):
+        # old hide-by-default branch (kept as opt-in)
+        window_manager.set_window_handle(hwnd)
+        window_manager.stealth_active = True
+        window_manager.hide_from_taskbar()
+        window_manager.set_always_on_top(True)
+        window_manager.start_screen_share_monitor()
+        print("✅ HIDE-BY-DEFAULT STEALTH MODE ENABLED")
+        return True
 
-    # 1. Register the window handle so Alt+Z and programmatic hide work.
+    # Default "invisible": Cluely-style — window stays visible to the user but is
+    # excluded from screen capture entirely (no black rectangle).
+    print(f"🛡️ [INVISIBLE MODE] Applying WDA_EXCLUDEFROMCAPTURE (0x{WDA_EXCLUDEFROMCAPTURE:08X}) — visible to you, invisible in capture")
+    success = _user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
     window_manager.set_window_handle(hwnd)
-    window_manager.stealth_active = True
-
-    # 2. Hidden from taskbar — no taskbar entry to notice while peeked.
     window_manager.hide_from_taskbar()
-
-    # 3. Always on top so peeks appear above everything else.
     window_manager.set_always_on_top(True)
-
-    # 4. Hide Microsoft Teams/Meet "you are sharing" indicators (same as blackout mode).
     window_manager.start_screen_share_monitor()
-
-    # 5. Keep the window visible for now (onboarding/setup). It is hidden
-    #    automatically the moment the interview starts (session_manager),
-    #    and Alt+Z peeks it back for STEALTH_PEEK_SECONDS at a time.
-    print("✅ HIDE-BY-DEFAULT STEALTH MODE ENABLED")
-    print("   📌 Window stays on screen during setup, then auto-hides when the interview starts")
-    print("   📌 Also auto-hides the moment a screen share is detected (rising edge)")
-    print("   📌 While hidden it is absent from screen shares — NO black rectangle, NO content")
-    print("   📌 Native title is blanked while hidden (survives hidden-window scans)")
-    print("   📌 Alt+Z: peek — click-through + focus kept, auto-hides after STEALTH_PEEK_SECONDS (default 10s)")
-
-    return True
+    if success:
+        print("✅ INVISIBLE STEALTH MODE ENABLED (Cluely-style)")
+        print("   📌 Window stays visible to you; absent from screen shares/recordings")
+        print("   📌 No black rectangle — excluded from capture entirely")
+        verify_protection(hwnd)
+        return True
+    else:
+        error_code = ctypes.GetLastError()
+        print(f"❌ FAILED: SetWindowDisplayAffinity failed! Error Code: {error_code}")
+        print("   🚨 Falling back to hide-by-default mode")
+        window_manager.stealth_active = True
+        # hide on interview start still applies
+        return True
 
 def verify_protection(hwnd) -> Optional[bool]:
     """Verify that capture protection is actually applied.
