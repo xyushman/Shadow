@@ -289,6 +289,36 @@ async def native_audio_devices():
     return {"devices": devices, "defaultIndex": default_idx}
 
 
+@router.get("/api/clipboard")
+async def read_clipboard():
+    """Reads the current clipboard text (no browser permission needed)."""
+    import win32clipboard
+    text = ""
+    try:
+        win32clipboard.OpenClipboard()
+        try:
+            if win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_UNICODETEXT):
+                text = win32clipboard.GetClipboardData(win32clipboard.CF_UNICODETEXT) or ""
+            elif win32clipboard.IsClipboardFormatAvailable(win32clipboard.CF_TEXT):
+                raw = win32clipboard.GetClipboardData(win32clipboard.CF_TEXT)
+                text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+        finally:
+            win32clipboard.CloseClipboard()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Clipboard read failed: {e}")
+    return {"success": True, "text": text}
+
+
+@router.get("/api/screen-signature")
+async def screen_signature():
+    """Tiny grayscale fingerprint of the screen for cheap question-change detection."""
+    try:
+        img = ImageGrab.grab(all_screens=False).convert("L").resize((24, 14))
+        return {"success": True, "grid": list(img.getdata())}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Screen signature failed: {e}")
+
+
 @router.get("/api/transparency")
 async def get_transparency():
     """Get current window transparency information"""

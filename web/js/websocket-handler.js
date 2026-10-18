@@ -332,6 +332,20 @@ export class WebSocketHandler {
     }
 
     /**
+     * Answer a plain-text question (clipboard paste / typed). No OCR needed.
+     */
+    askText(text) {
+        this.sendMessage('ask_text', { text });
+    }
+
+    /**
+     * Re-answer a previous question, optionally via a different provider preset.
+     */
+    regenerate(question, presetKey) {
+        this.sendMessage('regenerate', { question, preset_key: presetKey ?? null });
+    }
+
+    /**
      * Base64-encode a PCM buffer for transport.
      *
      * Sending the raw bytes as a JSON array of integers cost roughly 4 bytes of
@@ -363,6 +377,9 @@ export class WebSocketHandler {
             process_all_speakers: true,
             // Which backend input device native capture should open (null = default).
             nativeMicIndex: this.nativeMicIndex ?? null,
+            response_mode: state.responseMode || 'detailed',
+            answer_mode: state.answerMode || 'automatic',
+            auto_mode_enabled: state.autoModeEnabled !== false,
             aiSecondaryProvider: state.selectedSecondaryProvider.name ? {
                 provider: state.selectedSecondaryProvider.name,
                 model: state.selectedSecondaryProvider.model

@@ -41,7 +41,24 @@ def build_unlimited_candidate_profile(persistent_context: dict, include_personal
     
     return "\n".join(profile_parts) + "\n" if profile_parts else ""
 
-def get_interview_answer_prompt(question: str, context_manager: PersistentContextManager) -> str:
+# Response-style directives injected at the top of the prompt so they take
+# precedence over the (long) default guidelines below.
+RESPONSE_STYLE_DIRECTIVES = {
+    "concise": (
+        "⚡ RESPONSE STYLE — CONCISE (highest priority, overrides the length guidance below):\n"
+        "- Give the shortest answer that fully solves the question.\n"
+        "- Coding: ONE best approach — code FIRST, then 2-3 lines of time/space complexity. No second approach, no preamble.\n"
+        "- Non-coding: at most 4 sentences or 3 short bullets.\n"
+        "- No restating the question, no headings, no filler, no closing pleasantries."
+    ),
+    "detailed": (
+        "📖 RESPONSE STYLE — DETAILED (highest priority):\n"
+        "- Follow the full structured template below; be thorough and well-organized."
+    ),
+}
+
+
+def get_interview_answer_prompt(question: str, context_manager: PersistentContextManager, response_style: str = None) -> str:
     """
     Generate AI prompt with guaranteed persistent context + recent conversation history.
     NO TOKEN LIMITS - includes complete resume and job description.
@@ -120,6 +137,12 @@ ACCURACY (ANTI-HALLUCINATION):
 - Prefer details drawn from the candidate's own resume/projects over generic claims
 - If two parts of your answer could conflict, resolve the conflict rather than leaving both""")
     
+    # RESPONSE STYLE — concise vs detailed for this session
+    style_key = (response_style or '').lower()
+    if style_key in RESPONSE_STYLE_DIRECTIVES:
+        prompt_parts.append(RESPONSE_STYLE_DIRECTIVES[style_key])
+        prompt_parts.append("=" * 100)
+
     # PERSISTENT CANDIDATE CONTEXT - Always present, never removed
     prompt_parts.append("=" * 100)
     prompt_parts.append("🔒 PERSISTENT CANDIDATE CONTEXT (ALWAYS PRESENT - NEVER REMOVED):")

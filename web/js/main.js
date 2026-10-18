@@ -16,12 +16,19 @@ import hotkeyManager from './hotkeys.js';
 import presetManager from './preset-manager.js';
 import screenshotService from './screenshot-service.js';
 import { ConfigManager } from './config-manager.js';
+import autoCapture from './auto-capture.js';
 import { testStreamingMarkdown, testSampleMarkdown } from './streaming-markdown-demo.js';
 
 // Initialize managers
 const stateManager = new StateManager();
 const webSocketHandler = new WebSocketHandler(stateManager);
 const providerManager = new ProviderManager(stateManager, webSocketHandler);
+
+autoCapture.configure({
+    stateManager,
+    getEnabled: () => getAutoModeEnabled() && stateManager.isLiveInterviewActive(),
+    onStatus: (msg) => devLog('🎯 Auto-capture:', msg)
+});
 const configManager = new ConfigManager(stateManager);
 
 // Expose to window for inter-module integration
@@ -71,8 +78,7 @@ function setupTabs() {
     });
 
     // Wire up the Fill Demo Data button
-    const fillDemoBtn = document.getElementById('fill-demo-btn');
-    if (fillDemoBtn) {
+    const fillDemoBtn = document.getElementById('fill-demo-btn');    if (fillDemoBtn) {
         fillDemoBtn.addEventListener('click', (e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -92,6 +98,7 @@ function switchView(targetView) {
 
 function handleOnboarding() {
     if (stateManager.handleOnboarding()) {
+        updateAnswerModeUI();
         switchView('preflight');
         runPreFlightChecks();
     }
@@ -178,6 +185,9 @@ async function startInterview() {
         : null;
 
     webSocketHandler.startInterview();
+
+    // Watch the screen for new questions when auto mode is enabled.
+    autoCapture.start();
 }
 
 async function endInterview() {
@@ -185,6 +195,7 @@ async function endInterview() {
 
     // Stop all audio processing
     stopAudioProcessing();
+    autoCapture.stop();
 
     // Send end interview signal to backend
     webSocketHandler.endInterview();
@@ -274,11 +285,172 @@ function toggleUniversalMute() {
     return stateManager.toggleUniversalMute();
 }
 
+// --- Answer Mode / Response Style -------------------------------------------
+function getAutoModeEnabled() {
+    const state = stateManager.getState();
+    if (state.answerMode === 'manual') return false;
+    if (state.answerMode === 'automatic') return true;
+    return state.autoModeEnabled !== false;
+}
+
+function updateAutoModeButton() {
+    const btn = document.getElementById('auto-mode-btn');
+    if (!btn) return;
+    const state = stateManager.getState();
+    if (state.answerMode === 'manual') {
+        btn.style.display = 'none';
+        return;
+    }
+    btn.style.display = '';
+    const on = getAutoModeEnabled();
+    btn.textContent = on ? 'Auto: ON' : 'Auto: OFF';
+    btn.classList.toggle('auto-on', on);
+    btn.classList.toggle('auto-off', !on);
+}
+
+function setAutoMode(enabled) {
+    stateManager.updateState({ autoModeEnabled: enabled });
+    updateAutoModeButton();
+    webSocketHandler.sendMessage('config_update', { autoModeEnabled: enabled });
+    if (enabled) {
+        autoCapture.start();
+    } else {
+        autoCapture.stop();
+    }
+    return enabled;
+}
+
+function toggleAutoMode() {
+    const next = !getAutoModeEnabled();
+    setAutoMode(next);
+    return next;
+}
+
+function updateResponseStyleButton() {
+    const btn = document.getElementById('response-style-btn');
+    if (!btn) return;
+    const concise = stateManager.getState().responseMode === 'concise';
+    btn.textContent = concise ? 'Concise' : 'Detailed';
+    btn.classList.toggle('active', concise);
+}
+
+function setResponseStyle(mode) {
+    const responseMode = mode === 'concise' ? 'concise' : 'detailed';
+    stateManager.updateState({ responseMode });
+    updateResponseStyleButton();
+    webSocketHandler.sendMessage('config_update', { responseMode });
+    return responseMode;
+}
+
+function toggleResponseStyle() {
+    const next = stateManager.getState().responseMode === 'concise' ? 'detailed' : 'concise';
+    setResponseStyle(next);
+    return next;
+}
+
+function answerQuestionText(text) {
+    const question = (text || '').trim();
+    if (!question) return false;
+    webSocketHandler.askText(question);
+    return true;
+}
+
+async function answerFromClipboard() {
+    try {
+        const resp = await fetch('/api/clipboard');
+        if (!resp.ok) throw new Error('clipboard unavailable');
+        const data = await resp.json();
+        const text = (data.text || '').trim();
+        if (!text) {
+            screenshotService.showNotification('Clipboard Empty', 'Copy the question first, then press Alt+C', 'warning');
+            return false;
+        }
+        openPastePanel(text);
+        return answerQuestionText(text);
+    } catch (err) {
+        console.warn('⚠️ Clipboard read failed:', err);
+        screenshotService.showNotification('Clipboard Error', 'Could not read the clipboard', 'error');
+        return false;
+    }
+}
+
+function openPastePanel(prefill) {
+    const panel = document.getElementById('paste-panel');
+    const input = document.getElementById('paste-question-input');
+    if (!panel || !input) return;
+    if (typeof prefill === 'string') input.value = prefill;
+    panel.classList.add('open');
+    input.focus();
+}
+
+function closePastePanel() {
+    const panel = document.getElementById('paste-panel');
+    if (panel) panel.classList.remove('open');
+}
+
+function toggleHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    if (!panel) return;
+    if (panel.classList.contains('open')) {
+        panel.classList.remove('open');
+    } else {
+        liveInterviewUI.renderHistoryPanel();
+        panel.classList.add('open');
+    }
+}
+
+function closeHistoryPanel() {
+    const panel = document.getElementById('history-panel');
+    if (panel) panel.classList.remove('open');
+}
+
+function updateAnswerModeUI() {
+    const state = stateManager.getState();
+    const row = document.getElementById('auto-toggle-row');
+    const toggle = document.getElementById('auto-mode-toggle');
+    if (row) row.style.display = state.answerMode === 'both' ? '' : 'none';
+    if (toggle) toggle.checked = state.autoModeEnabled !== false;
+    updateAutoModeButton();
+    updateResponseStyleButton();
+}
+
 // --- Event Listeners ---
 function setupEventListeners() {
     proceedButton?.addEventListener('click', handleOnboarding);
     startButton?.addEventListener('click', startInterview);
     backButton?.addEventListener('click', () => switchView('onboarding'));
+
+    // Answer mode / response style / paste / history controls
+    document.getElementById('auto-mode-btn')?.addEventListener('click', () => toggleAutoMode());
+    document.getElementById('response-style-btn')?.addEventListener('click', () => toggleResponseStyle());
+    document.getElementById('paste-question-btn')?.addEventListener('click', () => openPastePanel());
+    document.getElementById('history-btn')?.addEventListener('click', toggleHistoryPanel);
+    document.getElementById('history-close-btn')?.addEventListener('click', closeHistoryPanel);
+    document.getElementById('paste-close-btn')?.addEventListener('click', closePastePanel);
+    document.getElementById('paste-answer-btn')?.addEventListener('click', () => {
+        const input = document.getElementById('paste-question-input');
+        if (answerQuestionText(input?.value)) closePastePanel();
+    });
+    document.getElementById('paste-from-clipboard-btn')?.addEventListener('click', answerFromClipboard);
+    document.getElementById('paste-question-input')?.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            const input = document.getElementById('paste-question-input');
+            if (answerQuestionText(input?.value)) closePastePanel();
+        }
+    });
+    document.querySelectorAll('input[name="answer-mode"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            const mode = radio.value;
+            stateManager.updateState({ answerMode: mode });
+            if (mode === 'manual') stateManager.updateState({ autoModeEnabled: false });
+            else if (mode === 'automatic') stateManager.updateState({ autoModeEnabled: true });
+            updateAnswerModeUI();
+        });
+    });
+    document.getElementById('auto-mode-toggle')?.addEventListener('change', (e) => {
+        setAutoMode(e.target.checked);
+    });
 
     // Provider change listeners
     const providerSelect = document.getElementById('ai-provider-select');
@@ -303,6 +475,7 @@ window.addEventListener('DOMContentLoaded', async () => {
     setupPresetHotkeys();
     setupTabs();
     hotkeyManager.setEnabled(false);
+    updateAnswerModeUI();
     switchView('onboarding');
 });
 
@@ -428,6 +601,13 @@ window.processScreenshots = processScreenshots;
 window.resetScreenshotQueue = resetScreenshotQueue;
 window.toggleMicMute = toggleMicMute;
 window.toggleUniversalMute = toggleUniversalMute;
+window.toggleAutoMode = toggleAutoMode;
+window.setAutoMode = setAutoMode;
+window.toggleResponseStyle = toggleResponseStyle;
+window.setResponseStyle = setResponseStyle;
+window.answerFromClipboard = answerFromClipboard;
+window.answerQuestionText = answerQuestionText;
+window.toggleHistoryPanel = toggleHistoryPanel;
 window.endInterview = endInterview;
 window.resetInterview = resetInterview;
 window.submitAnswerFeedback = submitAnswerFeedback;

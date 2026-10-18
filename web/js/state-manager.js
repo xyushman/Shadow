@@ -24,6 +24,9 @@ export class StateManager {
                 model: null,
             },
             selectedLanguages: [],
+            responseMode: 'detailed',
+            answerMode: 'automatic',
+            autoModeEnabled: true,
             currentPreset: null,
             availablePresets: [],
             systemStatus: null,
@@ -59,6 +62,7 @@ export class StateManager {
             resume: document.getElementById('user-resume'),
             focusCheckboxes: document.querySelectorAll('input[name="focus"]'),
             sessionTypeRadios: document.querySelectorAll('input[name="session-type"]'),
+            answerModeRadios: document.querySelectorAll('input[name="answer-mode"]'),
             objectives: document.getElementById('user-objectives'),
             providerSelect: document.getElementById('ai-provider-select'),
             modelSelect: document.getElementById('ai-model-select'),
@@ -198,6 +202,18 @@ export class StateManager {
         this.appState.selectedSecondaryVisionProvider.name = secondaryVisionProvider || null;
         this.appState.selectedSecondaryVisionProvider.model = secondaryVisionModel || null;
         this.appState.selectedLanguages = selectedLanguages;
+
+        // Answer mode: automatic | manual | both (+ explicit auto on/off for "both")
+        const answerMode = this.appState.answerMode;
+        const autoToggle = document.getElementById('auto-mode-toggle');
+        this.appState.answerMode = answerMode;
+        if (answerMode === 'automatic') {
+            this.appState.autoModeEnabled = true;
+        } else if (answerMode === 'manual') {
+            this.appState.autoModeEnabled = false;
+        } else {
+            this.appState.autoModeEnabled = autoToggle ? autoToggle.checked : true;
+        }
 
         devLog("Onboarding data captured:", this.appState);
         return true;

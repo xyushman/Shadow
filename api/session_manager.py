@@ -27,9 +27,13 @@ class InterviewSession:
         self.state: Dict[str, any] = {
             "is_muted": False,
             "process_all_speakers": True,
-            "is_universally_muted": False
+            "is_universally_muted": False,
+            "response_mode": "detailed",
+            "answer_mode": "automatic",
+            "auto_mode_enabled": True,
         }
         self.transcript_buffer: str = ""
+        self.last_question: str = ""
         self.silence_timer: Optional[asyncio.Task] = None
         self.last_activity_time: float = time.time()
         # Native (prompt-free) audio capture. Active only when the backend can
@@ -71,6 +75,9 @@ class InterviewSession:
             self.state["is_muted"] = payload.get('is_muted', False)
             self.state["process_all_speakers"] = payload.get('process_all_speakers', True)
             self.state["is_universally_muted"] = payload.get('is_universally_muted', False)
+            self.state["response_mode"] = payload.get('response_mode', 'detailed')
+            self.state["answer_mode"] = payload.get('answer_mode', 'automatic')
+            self.state["auto_mode_enabled"] = payload.get('auto_mode_enabled', True)
             native_index = payload.get('nativeMicIndex')
             self.state["native_mic_index"] = int(native_index) if native_index is not None else None
 
@@ -139,6 +146,12 @@ class InterviewSession:
             self.state["is_universally_muted"] = payload['isUniversallyMuted']
         if 'isMicMuted' in payload:
             self.state["is_muted"] = payload['isMicMuted']
+        if 'responseMode' in payload:
+            self.state["response_mode"] = payload['responseMode']
+        if 'autoModeEnabled' in payload:
+            self.state["auto_mode_enabled"] = payload['autoModeEnabled']
+        if 'answerMode' in payload:
+            self.state["answer_mode"] = payload['answerMode']
         await self._send_json("config_updated", self.state)
 
     async def handle_switch_preset(self, payload: dict):
@@ -282,6 +295,38 @@ class InterviewSession:
         
         self.is_active = True
 
+    async def _answer_question(self, question: str, source: str = "voice"):
+        """Streams an answer for a question to the client (shared by voice/text/regenerate)."""
+        question = (question or "").strip()
+        if not question:
+            return
+        if not self.llm_manager or not self.websocket:
+            return
+
+        self.last_question = question
+
+        try:
+            await self._send_json("ai_processing_started", {"question": question, "source": source})
+
+            async def stream_callback(chunk: str, chunk_type: str):
+                return await self._send_json("ai_answer_chunk", {"chunk": chunk, "chunk_type": chunk_type})
+
+            answer, result_info = await self.llm_manager.get_ai_answer(
+                question, stream_callback, response_style=self.state.get("response_mode")
+            )
+
+            await self._send_json("ai_answer_complete", {
+                "answer": answer,
+                "question": question,
+                "source": source,
+                **result_info,
+            })
+            print(f"🤖 AI STREAMING COMPLETE for session {self.session_id} (source={source})")
+
+        except Exception as e:
+            print(f"❌ CRITICAL: Error answering question for session {self.session_id}: {e}")
+            await self._send_json("error", {"message": "Error processing transcript."})
+
     async def _process_aggregated_transcript(self):
         """Processes the buffered transcript after a period of silence."""
         if not self.transcript_buffer:
@@ -289,25 +334,46 @@ class InterviewSession:
 
         transcript = self.transcript_buffer
         self.transcript_buffer = ""
-        
+
         print(f"✅ Silence detected. Processing transcript for session {self.session_id}: {transcript}")
         if not self.llm_manager or not self.websocket:
             return
 
-        try:
-            await self._send_json("ai_processing_started", {"question": transcript})
+        if not self.state.get("auto_mode_enabled", True):
+            print(f"⏸️ Auto mode disabled - storing transcript without answering")
+            self.last_question = transcript
+            return
+        await self._answer_question(transcript, source="voice")
 
-            async def stream_callback(chunk: str, chunk_type: str):
-                return await self._send_json("ai_answer_chunk", {"chunk": chunk, "chunk_type": chunk_type})
+    async def handle_ask_text(self, payload: dict):
+        """Answers a plain-text question (clipboard paste / typed) with no OCR needed."""
+        self._touch()
+        text = (payload or {}).get('text', '')
+        if not text or not text.strip():
+            await self._send_json("error", {"message": "No text provided to answer."})
+            return
+        if not self.llm_manager:
+            await self._send_json("error", {"message": "AI providers not initialized"})
+            return
+        await self._answer_question(text, source="text")
 
-            answer, result_info = await self.llm_manager.get_ai_answer(transcript, stream_callback)
-            
-            await self._send_json("ai_answer_complete", {"answer": answer, **result_info})
-            print(f"🤖 AI STREAMING COMPLETE for session {self.session_id}")
-
-        except Exception as e:
-            print(f"❌ CRITICAL: Error processing transcript for session {self.session_id}: {e}")
-            await self._send_json("error", {"message": "Error processing transcript."})
+    async def handle_regenerate(self, payload: dict):
+        """Re-answers a previous question, optionally on a different model preset."""
+        self._touch()
+        payload = payload or {}
+        question = payload.get('question', '') or getattr(self, 'last_question', '')
+        if not question or not question.strip():
+            await self._send_json("error", {"message": "No question provided to regenerate."})
+            return
+        preset_key = payload.get('preset_key')
+        if preset_key:
+            if not self.llm_manager:
+                await self._send_json("error", {"message": "AI providers not initialized"})
+                return
+            success, result = await self.llm_manager.switch_preset(preset_key)
+            if success:
+                await self._send_json("preset_switched", {"success": True, **result})
+        await self._answer_question(question, source="regenerate")
 
     async def on_transcript(self, data):
         """Callback from Deepgram. Handles transcript logic and silence detection."""

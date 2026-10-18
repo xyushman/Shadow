@@ -16,6 +16,8 @@ class LiveInterviewUI {
         this.currentCandidateElement = null; // Track candidate message separately
         this.currentAIElement = null; // Track AI message separately
         this.lastAIResponse = '';     // Last completed AI answer (fed back via Alt+G/Alt+B)
+        this.currentQuestion = '';    // Question tied to the in-flight answer
+        this.answerHistory = [];      // [{question, answer, model, source, time}]
         this.isStreaming = false;
         this.eventsInitialized = false;
         
@@ -1052,6 +1054,9 @@ class LiveInterviewUI {
         // Reset markdown parser for new response
         this.markdownParser.reset();
         
+        // Remember which question this answer belongs to
+        this.currentQuestion = (metadata && metadata.question) ? metadata.question : '';
+        
         // Create NEW AI response element for each response
         this.currentStreamingElement = this.createMessageElement('', 'ai-response');
         this.conversationStream.appendChild(this.currentStreamingElement);
@@ -1122,6 +1127,12 @@ class LiveInterviewUI {
             // Always show metadata for completed responses (unless force finalizing)
             if (!metadata.forceFinalize) {
                 this.addResponseMetadata(this.currentStreamingElement, metadata);
+                this.addResponseActions(this.currentStreamingElement, {
+                    question: metadata.question || this.currentQuestion,
+                    answer: this.lastAIResponse,
+                    model: metadata.preset?.model || '',
+                    source: metadata.source || 'voice'
+                });
             }
             
             // Reset scroll mode
@@ -1185,6 +1196,147 @@ class LiveInterviewUI {
         }
     }
 
+    /**
+     * Convert an answer (plain text or markdown) into paste-ready plain text.
+     * Strips fences/emphasis/heading marks so it can be pasted anywhere.
+     */
+    toPlainText(input) {
+        if (!input) return '';
+        let text = String(input).replace(/\r\n/g, '\n');
+        if (/[#*_`\[\]>]/.test(text)) {
+            text = text
+                .replace(/```[a-zA-Z0-9_+-]*\n?/g, '')
+                .replace(/```/g, '')
+                .replace(/^#{1,6}\s+/gm, '')
+                .replace(/\*\*([^*]+)\*\*/g, '$1')
+                .replace(/__([^_]+)__/g, '$1')
+                .replace(/(^|\W)\*([^*\n]+)\*(?=\W|$)/g, '$1$2')
+                .replace(/`([^`]+)`/g, '$1')
+                .replace(/^\s*[-*]\s+/gm, '- ')
+                .replace(/\n{3,}/g, '\n\n');
+        }
+        return text.trim();
+    }
+
+    async copyTextToClipboard(text) {
+        const plain = this.toPlainText(text);
+        try {
+            if (navigator.clipboard && window.isSecureContext !== false) {
+                await navigator.clipboard.writeText(plain);
+            } else {
+                const ta = document.createElement('textarea');
+                ta.value = plain;
+                ta.style.cssText = 'position:fixed;left:-9999px;';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+            }
+            return true;
+        } catch (err) {
+            console.warn('⚠️ Clipboard copy failed:', err);
+            return false;
+        }
+    }
+
+    /**
+     * Attach per-answer action buttons and record the answer in history.
+     */
+    addResponseActions(element, entry) {
+        if (!element) return;
+        const actions = document.createElement('div');
+        actions.className = 'response-actions';
+
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'response-action-btn';
+        copyBtn.textContent = 'Copy plain text';
+        copyBtn.addEventListener('click', async () => {
+            const ok = await this.copyTextToClipboard(entry.answer);
+            copyBtn.textContent = ok ? 'Copied!' : 'Copy failed';
+            setTimeout(() => { copyBtn.textContent = 'Copy plain text'; }, 1500);
+        });
+
+        const regenBtn = document.createElement('button');
+        regenBtn.className = 'response-action-btn';
+        regenBtn.textContent = 'Regenerate';
+        regenBtn.disabled = !entry.question;
+        regenBtn.addEventListener('click', () => this.regenerateAnswer(entry.question));
+
+        actions.appendChild(copyBtn);
+        actions.appendChild(regenBtn);
+        element.appendChild(actions);
+
+        this.recordAnswer(entry);
+    }
+
+    recordAnswer(entry) {
+        if (!entry || !entry.answer) return;
+        this.answerHistory.push({
+            question: entry.question || '',
+            answer: entry.answer,
+            model: entry.model || '',
+            source: entry.source || 'voice',
+            time: Date.now()
+        });
+        const badge = document.getElementById('history-count');
+        if (badge) badge.textContent = String(this.answerHistory.length);
+        this.renderHistoryPanel();
+    }
+
+    regenerateAnswer(question) {
+        if (!question) return;
+        if (typeof window.sendSocketMessage === 'function') {
+            window.sendSocketMessage('regenerate', { question });
+        } else {
+            console.warn('⚠️ Cannot regenerate: socket not available');
+        }
+    }
+
+    renderHistoryPanel() {
+        const list = document.getElementById('history-list');
+        if (!list) return;
+        if (!this.answerHistory.length) {
+            list.innerHTML = '<div class="history-empty">No answers yet.</div>';
+            return;
+        }
+        const items = this.answerHistory.slice().reverse().map((item, idx) => {
+            const i = this.answerHistory.length - 1 - idx;
+            const preview = this.toPlainText(item.answer).substring(0, 160);
+            const q = item.question ? this.escapeHtml(item.question) : '(no question)';
+            return `<div class="history-item" data-index="${i}">
+                <div class="history-question">${q}</div>
+                <div class="history-preview">${this.escapeHtml(preview)}</div>
+                <div class="history-item-actions">
+                    <button class="btn-small" data-action="copy" data-index="${i}">Copy</button>
+                    <button class="btn-small" data-action="regen" data-index="${i}"${item.question ? '' : ' disabled'}>Regenerate</button>
+                </div>
+            </div>`;
+        }).join('');
+        list.innerHTML = items;
+
+        list.querySelectorAll('button').forEach((btn) => {
+            btn.addEventListener('click', async () => {
+                const i = parseInt(btn.dataset.index, 10);
+                const item = this.answerHistory[i];
+                if (!item) return;
+                if (btn.dataset.action === 'copy') {
+                    const ok = await this.copyTextToClipboard(item.answer);
+                    btn.textContent = ok ? 'Copied!' : 'Failed';
+                    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+                } else if (btn.dataset.action === 'regen') {
+                    this.regenerateAnswer(item.question);
+                }
+            });
+        });
+    }
+
+    escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     // Filter thinking content helper
     filterThinkingContent(content) {
         if (!content || typeof content !== 'string') {
@@ -1245,6 +1397,12 @@ class LiveInterviewUI {
         // Reset markdown parser
         this.markdownParser.reset();
         
+        this.lastAIResponse = '';
+        this.currentQuestion = '';
+        this.answerHistory = [];
+        const badge = document.getElementById('history-count');
+        if (badge) badge.textContent = '0';
+        this.renderHistoryPanel();
         this.updateEmptyState();
         console.log('🧹 Conversation cleared and all references reset');
     }
