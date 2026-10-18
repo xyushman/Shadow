@@ -1,6 +1,9 @@
 import orjson
 import aiofiles
+import base64
+import io
 from fastapi import APIRouter, HTTPException
+from PIL import ImageGrab
 from pydantic import BaseModel
 from core.config import settings
 from core.key_utils import resolve_provider_keys
@@ -229,7 +232,23 @@ async def verify_vision_ai_provider(request: ProviderVerifyRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to verify vision provider: {e}")
 
-@router.get("/api/transparency")
+@router.get("/api/capture-screen")
+async def capture_screen():
+    """Capture the primary screen and return a JPEG data URL (no browser permission needed)."""
+    try:
+        img = ImageGrab.grab(all_screens=False)
+        # Downscale large captures to bound payload size.
+        max_edge = 1920
+        w, h = img.size
+        if max(w, h) > max_edge:
+            scale = max_edge / max(w, h)
+            img = img.resize((int(w * scale), int(h * scale)))
+        buf = io.BytesIO()
+        img.convert("RGB").save(buf, format="JPEG", quality=80)
+        b64 = base64.b64encode(buf.getvalue()).decode("ascii")
+        return {"success": True, "dataUrl": f"data:image/jpeg;base64,{b64}"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Screen capture failed: {e}")
 async def get_transparency():
     """Get current window transparency information"""
     return window_manager.get_transparency_info()

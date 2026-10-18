@@ -375,103 +375,25 @@ class ScreenshotService {
         this.isCapturing = true;
         
         try {
-            // Try to use existing screen video track first
-            let videoTrack = null;
-            
-            // Import audio handler to get existing screen track
-            if (window.getScreenVideoTrack && window.isScreenSharingAvailable) {
-                if (window.isScreenSharingAvailable()) {
-                    videoTrack = window.getScreenVideoTrack();
-                    console.log('📹 Using existing screen video track for screenshot');
-                } else {
-                    console.warn('⚠️ Screen sharing not available, requesting new permission');
-                }
-            }
-            
-            // Fallback to requesting new permission if no existing track
-            if (!videoTrack) {
-                if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-                    throw new Error('Screen capture not supported in this browser');
-                }
-                
-                const stream = await navigator.mediaDevices.getDisplayMedia({
-                    video: {
-                        mediaSource: 'screen',
-                        width: { max: 1920 },
-                        height: { max: 1080 }
-                    }
-                });
-                
-                videoTrack = stream.getVideoTracks()[0];
-                if (!videoTrack) {
-                    throw new Error('No video track available from screen capture');
-                }
-                
-                console.log('📹 Created new screen capture stream for screenshot');
-            }
-            
-            // Create video element to capture frame
-            const video = document.createElement('video');
-            video.srcObject = new MediaStream([videoTrack]);
-            video.play();
-            
-            // Wait for video to load
-            await new Promise((resolve, reject) => {
-                video.onloadedmetadata = resolve;
-                video.onerror = reject;
-                // Add timeout to prevent hanging
-                setTimeout(() => reject(new Error('Video load timeout')), 5000);
-            });
-            
-            // Create canvas and capture frame.
-            //
-            // The primary path reuses the display track opened by audio_handler,
-            // which is requested without size constraints, so videoWidth is the
-            // full native resolution. Capping the long edge bounds the payload on
-            // very large or multi-monitor captures, where four queued screenshots
-            // could otherwise approach a provider's request size limit.
-            //
-            // Verified on a 4512x3424 diagram: both Cerebras gemma-4-31b and
-            // Gemini 3.6 Flash extracted exactly the same text before and after
-            // downscaling, and Cerebras got 32% faster. Displays at or below the
-            // cap are untouched, so most users see no change at all.
-            const scale = Math.min(1, MAX_CAPTURE_EDGE_PX / Math.max(video.videoWidth, video.videoHeight));
-            const canvas = document.createElement('canvas');
-            canvas.width = Math.round(video.videoWidth * scale);
-            canvas.height = Math.round(video.videoHeight * scale);
+            // Capture via backend (PIL ImageGrab) - no browser permission prompt, no badge.
+            const resp = await fetch('/api/capture-screen');
+            if (!resp.ok) throw new Error('Backend capture failed');
+            const result = await resp.json();
+            if (!result.success || !result.dataUrl) throw new Error('No image returned');
 
-            const ctx = canvas.getContext('2d');
-            if (scale < 1) {
-                ctx.imageSmoothingEnabled = true;
-                ctx.imageSmoothingQuality = 'high';
-                console.log(`📐 Capture scaled ${video.videoWidth}x${video.videoHeight} -> ${canvas.width}x${canvas.height}`);
-            }
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
-            // Convert to blob
-            const blob = await new Promise(resolve => {
-                canvas.toBlob(resolve, 'image/jpeg', 0.8);
-            });
-            
-            // Only stop the track if we created a new one (not reusing existing)
-            if (!window.getScreenVideoTrack || videoTrack !== window.getScreenVideoTrack()) {
-                videoTrack.stop();
-                console.log('📹 Stopped temporary screen capture track');
-            }
-            
-            // Clean up video element
-            video.srcObject = null;
-            
-            // Add to queue
+            const dataUrl = result.dataUrl;
+            const base64Part = dataUrl.split(',')[1] || '';
+            const size = Math.round(base64Part.length * 0.75);
+
             const screenshot = {
                 id: Date.now(),
-                blob: blob,
-                dataUrl: canvas.toDataURL('image/jpeg', 0.8),
+                blob: null,
+                dataUrl: dataUrl,
                 timestamp: new Date(),
-                size: blob.size
+                size: size
             };
-            
-            this.addToQueue(screenshot);
+
+            this.addToQueue(screenshot)
             this.showNotification('📸 Screenshot Captured (Global)', `Added to queue (${this.screenshotQueue.length}/${this.maxScreenshots}) - Alt+P to process`, 'success');
             
             return true;
