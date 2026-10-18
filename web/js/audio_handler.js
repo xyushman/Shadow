@@ -121,6 +121,12 @@ export async function startAudioProcessing(micId, onAudioData) {
         const micSource = audioContext.createMediaStreamSource(micStream);
         const systemSource = audioContext.createMediaStreamSource(systemStream);
         
+        // Stop the video track(s) so the browser's "sharing your screen" indicator
+        // is dismissed; the audio track keeps capturing system audio.
+        try {
+            systemStream.getVideoTracks().forEach(t => { try { t.stop(); } catch (e) {} });
+        } catch (e) {}
+        
         // Create gain node for microphone muting
         micGainNode = audioContext.createGain();
         updateMicGainNode(); // Set initial gain based on mute manager state
