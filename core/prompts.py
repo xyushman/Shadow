@@ -110,14 +110,27 @@ GENERAL APPROACH:
 - Structure answers clearly with logical flow
 - Be concise but comprehensive - avoid unnecessary fluff
 - Show depth of knowledge while remaining practical
-- Demonstrate problem-solving thinking process""")
+- Demonstrate problem-solving thinking process
+
+ACCURACY (ANTI-HALLUCINATION):
+- For factual, numeric, legal or historical claims you are NOT certain about, say so explicitly and hedge (approximate ranges, "as far as I recall") — never invent precise figures, citations, dates or statistics
+- Prefer details drawn from the candidate's own resume/projects over generic claims
+- If two parts of your answer could conflict, resolve the conflict rather than leaving both""")
     
     # PERSISTENT CANDIDATE CONTEXT - Always present, never removed
     prompt_parts.append("=" * 100)
     prompt_parts.append("🔒 PERSISTENT CANDIDATE CONTEXT (ALWAYS PRESENT - NEVER REMOVED):")
     prompt_parts.append(build_unlimited_candidate_profile(persistent_context, settings.PERSONALIZE_ANSWERS))
     prompt_parts.append("=" * 100)
-    
+
+    # GROUND-TRUTH LOOP: the candidate's own ratings of previous answers (Alt+G / Alt+B)
+    feedback_notes = complete_context.get('feedback_notes') or []
+    if feedback_notes:
+        prompt_parts.append("🎯 CANDIDATE FEEDBACK ON YOUR PREVIOUS ANSWERS (ADJUST ACCORDINGLY):")
+        for note in feedback_notes:
+            prompt_parts.append(f"- {note}")
+        prompt_parts.append("=" * 100)
+
     # Recent conversation history (limited to MAX_CONVERSATION_HISTORY exchanges)
     if settings.INCLUDE_CONVERSATION_HISTORY and conversation_history:
         prompt_parts.append(f"📝 RECENT CONVERSATION HISTORY (LAST {settings.MAX_CONVERSATION_HISTORY} EXCHANGES FOR CONTEXT):")

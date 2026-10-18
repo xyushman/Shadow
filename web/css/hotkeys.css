@@ -24,7 +24,7 @@
     font-size: 0.9rem;
     font-weight: 600;
     margin-bottom: 0.75rem;
-    color: #00d4ff;
+    color: #dcdcdc;
 }
 
 .hint-controls {
@@ -42,12 +42,12 @@
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
     font-size: 0.75rem;
     margin-right: 0.5rem;
-    color: #ffc107;
+    color: #8f8f8f;
 }
 
 .hint-level {
     font-size: 0.8rem;
-    color: #a0aec0;
+    color: #adadad;
     text-align: center;
     padding-top: 0.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
@@ -89,7 +89,7 @@
 
 .bar-segment.active {
     opacity: 1;
-    color: #00d4ff;
+    color: #dcdcdc;
     transform: scale(1.2);
 }
 
@@ -97,7 +97,7 @@
     font-size: 0.8rem;
     opacity: 0.8;
     margin-top: 0.25rem;
-    color: #a0aec0;
+    color: #adadad;
 }
 
 @keyframes fadeInSlide {

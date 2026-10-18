@@ -42,7 +42,7 @@ const DISPLAY_DELIMITER_TOKEN = /```[\s\S]*?```|`[^`\n]+`|\n[ \t]*\n|\\[[\]]|\\[
 
 const KATEX_OPTIONS = Object.freeze({
     throwOnError: false, // bad TeX renders as red source text instead of throwing
-    errorColor: '#ff8a80', // KaTeX's default #cc0000 is unreadable on the dark overlay
+    errorColor: '#e6e6e6', // KaTeX's default #cc0000 is unreadable on the dark overlay
     strict: 'ignore',    // models mix unicode into math; don't spam the console
     trust: false,        // no \href, \url, \htmlClass etc. from model output
     maxSize: 10,         // cap \rule / \kern sizes (em): vision reads untrusted screen text

@@ -64,7 +64,7 @@ class GlobalCommandMonitor:
     """Monitors the temp command file for global hotkey commands"""
     
     def __init__(self):
-        self.command_file = os.path.join(tempfile.gettempdir(), "aura_command.json")
+        self.command_file = os.path.join(tempfile.gettempdir(), "shadow_command.json")
         self.last_command_time = 0
         self.running = False
         self.websocket_manager = None
@@ -200,6 +200,11 @@ class GlobalCommandMonitor:
                 self._execute_browser_command('if (window.switchVisionModel) { window.switchVisionModel(); } else { console.warn("switchVisionModel not available"); }')
             elif command == 'reset_interview':
                 self._execute_browser_command('if (window.resetInterview) { window.resetInterview(); } else { console.warn("resetInterview not available"); }')
+            elif command == 'answer_feedback':
+                rating = command_data.get('rating', 'good')
+                if rating not in ('good', 'bad'):
+                    rating = 'good'
+                self._execute_browser_command(f'if (window.submitAnswerFeedback) {{ window.submitAnswerFeedback("{rating}"); }} else {{ console.warn("submitAnswerFeedback not available"); }}')
             elif command == 'scroll':
                 direction = command_data.get('direction', 'down')
                 amount = command_data.get('amount', 150)
@@ -421,7 +426,7 @@ def setup_webview_window():
     """Setup and configure the webview window"""
     # Create the pywebview window, loading the FastAPI server
     window = webview.create_window(
-        'Aura',
+        'Shadow',
         f'http://127.0.0.1:{uvicorn_server.port}',
         width=1000,
         height=750,
@@ -449,7 +454,7 @@ def setup_webview_window():
         time.sleep(1.0)  # Give window more time to fully initialize
         
         # Find window and configure always-on-top (but NOT transparency yet)
-        if window_manager.find_aura_window():
+        if window_manager.find_shadow_window():
             print("🔍 Window found - setting up always-on-top only")
             
             # Wait a bit more before setting always-on-top
@@ -469,9 +474,9 @@ def setup_webview_window():
             if not always_on_top_success:
                 print("⚠️ Failed to set always on top after 3 attempts")
                 
-            print("ℹ️ Transparency will be applied only during live interview")
+            print("ℹ️ Window auto-hides when the interview starts — Alt+Z to peek")
         else:
-            print("⚠️ Could not find Aura window for window management")
+            print("⚠️ Could not find Shadow window for window management")
         
         # Start the global hotkey listener
         window_manager.window_manager.start_hotkey_listener()
@@ -487,13 +492,46 @@ def setup_webview_window():
     
     return window
 
+def enable_dpi_awareness():
+    """Make the process Per-Monitor DPI aware before any window exists.
+
+    Without this, Windows DPI-virtualizes screenshots and window geometry on
+    scaled displays: captured text is blurry (vision/OCR errors) and Win32
+    rects are wrong (mis-sized, mis-positioned windows). Must run BEFORE the
+    pywebview window is created to have any effect.
+    """
+    try:
+        import ctypes
+        user32 = ctypes.windll.user32
+        try:
+            # DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 == (HANDLE)-4 (Win10 1703+)
+            if user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+                print("🖥️ DPI awareness: Per-Monitor V2")
+                return
+        except (AttributeError, OSError):
+            pass
+        try:
+            if ctypes.windll.shcore.SetProcessDpiAwareness(2) == 0:  # PROCESS_PER_MONITOR_DPI_AWARE
+                print("🖥️ DPI awareness: Per-Monitor")
+                return
+        except (AttributeError, OSError):
+            pass
+        if user32.SetProcessDPIAware():
+            print("🖥️ DPI awareness: System")
+    except Exception as e:
+        print(f"⚠️ Could not set DPI awareness: {e}")
+
+
 # --- Main Application Entry Point ---
 def main():
     """Main application entry point"""
-    print("🚀 Starting Aura with corrected asyncio-native architecture...")
+    print("🚀 Starting Shadow with corrected asyncio-native architecture...")
     print("   📋 Architecture: pywebview on main thread, asyncio services in background thread")
     
     try:
+        # Must happen before the window is created — see docstring above
+        enable_dpi_awareness()
+
         # Start the asyncio services in background thread
         asyncio_service_thread.start()
         

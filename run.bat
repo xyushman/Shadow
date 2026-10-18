@@ -2,18 +2,18 @@
 setlocal enabledelayedexpansion
 
 :: ====================================================
-:: Aura Application Launcher
+:: Shadow Application Launcher
 :: ====================================================
 :: This batch file will:
 :: 1. Check if Python is installed
 :: 2. Create a virtual environment if needed
 :: 3. Install dependencies from requirements.txt
-:: 4. Launch the Aura application
+:: 4. Launch the Shadow application
 :: ====================================================
 
 echo.
 echo ====================================================
-echo           AURA APPLICATION LAUNCHER
+echo           SHADOW APPLICATION LAUNCHER
 echo ====================================================
 echo.
 
@@ -85,7 +85,7 @@ if not exist ".env" (
 )
 
 :: Launch the application
-echo [5/5] Starting Aura application...
+echo [5/5] Starting Shadow application...
 echo    Launching main.py...
 echo.
 echo ====================================================

@@ -1,38 +1,39 @@
-/* ===== AURA — PREMIUM BRANDED UI ===== */
+/* ===== SHADOW — PREMIUM BRANDED UI ===== */
 /* Inspired by Cluely, LockedIn AI, Linear, Vercel */
 
 :root {
     /* === WARM-DARK PALETTE === */
-    --pure-black: #08080f;
-    --pure-white: #f0f0f5;
-    --charcoal: #0c0c14;
-    --steel-gray: #1c1c2a;
+    --pure-black: #060606;
+    --pure-white: #f5f5f5;
+    --charcoal: #0b0b0b;
+    --steel-gray: #1c1c1c;
     --silver: #e5e5e5;
     --light-gray: #f5f5f5;
 
     /* === BRAND ACCENTS === */
-    --accent-indigo: #6366f1;
-    --accent-violet: #8b5cf6;
-    --accent-indigo-light: #818cf8;
-    --success-green: #34d399;
-    --warning-orange: #fb923c;
-    --subtle-purple: #6366f1;
-    --electric-blue: #6366f1;
+    --accent-indigo: #d9d9d9;
+    --accent-violet: #9a9a9a;
+    --accent-indigo-light: #c4c4c4;
+    --success-green: #c1c1c1;
+    --warning-orange: #8f8f8f;
+    --subtle-purple: #d9d9d9;
+    --electric-blue: #d9d9d9;
 
     /* === SEMANTIC MAP === */
-    --bg-primary: #08080f;
-    --bg-secondary: #0f0f18;
-    --bg-tertiary: #161623;
-    --bg-glass: rgba(15, 15, 24, 0.72);
-    --bg-glass-light: rgba(22, 22, 35, 0.5);
-    --text-primary: #e8e8ed;
-    --text-secondary: #8b8b9e;
+    --bg-primary: #060606;
+    --bg-secondary: #0d0d0d;
+    --bg-tertiary: #151515;
+    --bg-glass: rgba(14, 14, 14, 0.72);
+    --bg-glass-light: rgba(20, 20, 20, 0.5);
+    --text-primary: #ededed;
+    --text-secondary: #909090;
     --border-color: rgba(255, 255, 255, 0.07);
-    --border-glow: rgba(99, 102, 241, 0.35);
+    --border-glow: rgba(255, 255, 255, 0.35);
     --accent-primary: var(--accent-indigo);
     --accent-success: var(--success-green);
     --accent-warning: var(--warning-orange);
-    --accent-glow: rgba(99, 102, 241, 0.12);
+    --accent-glow: rgba(255, 255, 255, 0.12);
+    --accent-solid: #3f3f3f;
 
     /* === SPACING === */
     --space-xs: 4px;
@@ -68,8 +69,8 @@ body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background: var(--bg-primary);
     background-image:
-        radial-gradient(ellipse at 20% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 50%),
-        radial-gradient(ellipse at 80% 100%, rgba(139, 92, 246, 0.06) 0%, transparent 50%);
+        radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 100%, rgba(255, 255, 255, 0.06) 0%, transparent 50%);
     color: var(--text-primary);
     margin: 0;
     padding: 0;
@@ -177,7 +178,7 @@ h1 {
     font-size: 30px;
     font-weight: 800;
     letter-spacing: 0.18em;
-    background: linear-gradient(135deg, #6366f1 0%, #a78bfa 50%, #818cf8 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #d4d4d4 50%, #9e9e9e 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -229,9 +230,9 @@ h1 {
 }
 
 .tab-btn.active {
-    background: var(--accent-primary);
+    background: var(--accent-solid);
     color: #fff;
-    box-shadow: 0 0 20px rgba(99, 102, 241, 0.25);
+    box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
 }
 
 .tab-pane {
@@ -297,7 +298,7 @@ legend {
     letter-spacing: 0.02em;
     color: var(--accent-primary);
     background: var(--accent-glow);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: var(--radius-pill);
     cursor: pointer;
     transition: all var(--transition-fast);
@@ -306,11 +307,11 @@ legend {
 }
 
 .demo-fill-btn:hover {
-    background: rgba(99, 102, 241, 0.2);
+    background: rgba(255, 255, 255, 0.2);
     border-color: var(--accent-primary);
     color: #fff;
     transform: none;
-    box-shadow: 0 0 12px rgba(99, 102, 241, 0.2);
+    box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
 }
 
 /* ===== FORM ELEMENTS ===== */
@@ -339,7 +340,7 @@ select:focus {
     outline: none;
     border-color: var(--accent-primary);
     box-shadow: 0 0 0 3px var(--accent-glow);
-    background: rgba(99, 102, 241, 0.03);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 input::placeholder,
@@ -352,14 +353,14 @@ textarea::placeholder {
 input:required:invalid:not(:focus):not(:placeholder-shown),
 textarea:required:invalid:not(:focus):not(:placeholder-shown) {
     border-left: 3px solid var(--accent-warning);
-    background: rgba(251, 146, 60, 0.03);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 input:required:valid,
 textarea:required:valid,
 select:required:valid {
     border-left: 3px solid var(--accent-success);
-    background: rgba(52, 211, 153, 0.03);
+    background: rgba(255, 255, 255, 0.03);
 }
 
 textarea {
@@ -391,7 +392,7 @@ select:focus {
 }
 
 select option {
-    background: #1a1a2e;
+    background: #1a1a1a;
     color: var(--text-primary);
     font-weight: 500;
 }
@@ -431,8 +432,8 @@ select:disabled {
 }
 
 .checkbox-group label:hover {
-    border-color: rgba(99, 102, 241, 0.3);
-    background: rgba(99, 102, 241, 0.04);
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.04);
     transform: translateY(-1px);
 }
 
@@ -456,7 +457,7 @@ select:disabled {
 }
 
 .checkbox-group label input[type="checkbox"]:checked {
-    background: var(--accent-primary);
+    background: var(--accent-solid);
     border-color: var(--accent-primary);
 }
 
@@ -675,7 +676,7 @@ select:disabled {
 
 /* ===== ADVANCED CONFIG STYLES ===== */
 .advanced-info-box {
-    background: rgba(99, 102, 241, 0.06);
+    background: rgba(255, 255, 255, 0.06);
     border-left: 3px solid var(--accent-primary);
     border-radius: var(--radius-sm);
     padding: var(--space-md);
@@ -779,8 +780,8 @@ select:disabled {
 }
 
 .remove-key-btn {
-    background: var(--accent-warning) !important;
-    border-color: var(--accent-warning) !important;
+    background: #4a4a4a !important;
+    border-color: #5f5f5f !important;
 }
 
 .advanced-actions {
@@ -790,7 +791,7 @@ select:disabled {
 }
 
 #save-all-providers-btn {
-    background: var(--accent-primary);
+    background: var(--accent-solid);
 }
 
 /* ===== BUTTON SYSTEM ===== */
@@ -801,7 +802,7 @@ button {
     font-size: var(--font-sm);
     font-weight: 600;
     color: #fff;
-    background: var(--accent-primary);
+    background: var(--accent-solid);
     border: 1px solid var(--accent-primary);
     border-radius: var(--radius-sm);
     margin-top: var(--space-lg);
@@ -815,15 +816,15 @@ button {
 }
 
 button:hover:not(:disabled) {
-    background: var(--accent-indigo-light);
-    border-color: var(--accent-indigo-light);
+    background: #525252;
+    border-color: #6a6a6a;
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
 }
 
 button:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: 0 1px 6px rgba(99, 102, 241, 0.15);
+    box-shadow: 0 1px 6px rgba(255, 255, 255, 0.15);
 }
 
 button:focus-visible {
@@ -842,14 +843,14 @@ button:disabled {
 }
 
 #proceed-to-checks {
-    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    background: linear-gradient(135deg, #333333, #1f1f1f);
     border: none;
     font-weight: 600;
     border-radius: var(--radius-sm);
 }
 
 #proceed-to-checks:hover:not(:disabled) {
-    box-shadow: 0 6px 24px rgba(99, 102, 241, 0.4);
+    box-shadow: 0 6px 24px rgba(255, 255, 255, 0.4);
     transform: translateY(-2px);
 }
 
@@ -905,7 +906,7 @@ button.loading::after {
 }
 
 #check-ai-secondary-provider {
-    background: rgba(255, 107, 53, 0.05);
+    background: rgba(255, 255, 255, 0.05);
     border-left: 3px solid var(--accent-warning);
     padding-left: calc(var(--space-sm) + 3px);
     margin-left: -3px;
@@ -943,13 +944,13 @@ button.loading::after {
 }
 
 #start-interview-button {
-    background: linear-gradient(135deg, #34d399, #10b981);
+    background: linear-gradient(135deg, #4a4a4a, #2d2d2d);
     border: none;
     border-radius: var(--radius-sm);
 }
 
 #start-interview-button:hover:not(:disabled) {
-    box-shadow: 0 6px 24px rgba(52, 211, 153, 0.35);
+    box-shadow: 0 6px 24px rgba(255, 255, 255, 0.35);
     transform: translateY(-2px);
 }
 
@@ -1073,7 +1074,7 @@ select:focus-visible {
 
 /* ===== SELECTION STYLING ===== */
 ::selection {
-    background: var(--accent-primary);
+    background: var(--accent-solid);
     color: var(--text-primary);
 }
 
@@ -1091,7 +1092,7 @@ select:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: var(--accent-primary);
+    background: var(--accent-solid);
 }
 
 /* ===== COMMANDS & PRO-TIPS TAB ===== */
@@ -1110,16 +1111,16 @@ select:focus-visible {
 
 .pro-tip-card {
     padding: var(--space-md);
-    background: rgba(99, 102, 241, 0.08);
-    border: 1px solid rgba(99, 102, 241, 0.2);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: var(--radius-md);
-    border-left: 4px solid #6366f1;
+    border-left: 4px solid #d9d9d9;
 }
 
 .pro-tip-card h4 {
     margin: 0 0 var(--space-xs) 0;
     font-size: var(--font-sm);
-    color: #818cf8;
+    color: #c4c4c4;
 }
 
 .pro-tip-card p {
@@ -1140,23 +1141,23 @@ select:focus-visible {
 }
 
 .pro-tip-card.vision {
-    background: rgba(52, 211, 153, 0.08);
-    border-color: rgba(52, 211, 153, 0.2);
-    border-left-color: #34d399;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    border-left-color: #c1c1c1;
 }
 
 .pro-tip-card.vision h4 {
-    color: #34d399;
+    color: #c1c1c1;
 }
 
 .pro-tip-card.performance {
-    background: rgba(251, 191, 36, 0.08);
-    border-color: rgba(251, 191, 36, 0.2);
-    border-left-color: #fbbf24;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    border-left-color: #8f8f8f;
 }
 
 .pro-tip-card.performance h4 {
-    color: #fbbf24;
+    color: #8f8f8f;
 }
 
 .commands-grid {
@@ -1209,7 +1210,7 @@ select:focus-visible {
 /* ==========================================================================
    Reduced motion
    ==========================================================================
-   Aura renders as a translucent always-on-top overlay, so looping animation
+   Shadow renders as a translucent always-on-top overlay, so looping animation
    is not just an accessibility concern: movement is the thing that draws a
    viewer's eye to a window that is meant to go unnoticed. Seven animations
    loop forever (recording dot, listening dot, typing carets, spinner,

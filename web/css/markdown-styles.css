@@ -368,8 +368,8 @@
 
 /* Question highlighting for interview context */
 .markdown-header.question-header {
-    background: rgba(100, 210, 255, 0.05);
-    border-left: 4px solid #64d2ff;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #dcdcdc;
     padding: 0.5rem 1rem;
     margin-left: -1rem;
     border-radius: 0 6px 6px 0;
@@ -377,8 +377,8 @@
 
 /* Approach/solution headers */
 .markdown-header.approach-header {
-    background: rgba(255, 193, 7, 0.05);
-    border-left: 4px solid #ffc107;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 4px solid #8f8f8f;
     padding: 0.5rem 1rem;
     margin-left: -1rem;
     border-radius: 0 6px 6px 0;
@@ -424,7 +424,7 @@
 .markdown-bold::selection,
 .markdown-italic::selection,
 .inline-code::selection {
-    background: rgba(0, 212, 255, 0.3);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 /* ==============================================
@@ -626,8 +626,8 @@
 }
 
 .task-checkbox:checked + .task-content::before {
-    background: rgba(34, 197, 94, 0.8);
-    border-color: rgba(34, 197, 94, 1);
+    background: rgba(50, 50, 50, 0.8);
+    border-color: rgba(255, 255, 255, 1);
 }
 
 .task-checkbox:checked + .task-content::after {
@@ -699,7 +699,7 @@
    ============================================== */
 
 .markdown-link {
-    color: rgba(100, 210, 255, 0.9);
+    color: rgba(255, 255, 255, 0.9);
     text-decoration: none;
     border-bottom: 1px solid transparent;
     transition: all 0.2s ease;
@@ -707,13 +707,13 @@
 }
 
 .markdown-link:hover {
-    color: rgba(100, 210, 255, 1);
-    border-bottom-color: rgba(100, 210, 255, 0.5);
+    color: rgba(255, 255, 255, 1);
+    border-bottom-color: rgba(255, 255, 255, 0.5);
     text-decoration: none;
 }
 
 .markdown-link:visited {
-    color: rgba(147, 100, 255, 0.9);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .markdown-link::after {
@@ -807,11 +807,11 @@
 @keyframes linkFadeIn {
     from {
         opacity: 0.5;
-        color: rgba(100, 210, 255, 0.5);
+        color: rgba(255, 255, 255, 0.5);
     }
     to {
         opacity: 1;
-        color: rgba(100, 210, 255, 0.9);
+        color: rgba(255, 255, 255, 0.9);
     }
 }
 

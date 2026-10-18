@@ -15,6 +15,7 @@ class LiveInterviewUI {
         this.currentInterviewerElement = null; // Track interviewer message separately
         this.currentCandidateElement = null; // Track candidate message separately
         this.currentAIElement = null; // Track AI message separately
+        this.lastAIResponse = '';     // Last completed AI answer (fed back via Alt+G/Alt+B)
         this.isStreaming = false;
         this.eventsInitialized = false;
         
@@ -213,14 +214,14 @@ class LiveInterviewUI {
                 }
                 
                 .resume-scroll-btn.has-new-content {
-                    background: rgba(34, 139, 34, 0.7);
+                    background: rgba(50, 50, 50, 0.7);
                     color: #fff;
                     opacity: 0.8;
                     animation: subtlePulse 3s infinite;
                 }
                 
                 .resume-scroll-btn.has-new-content:hover {
-                    background: rgba(34, 139, 34, 0.9);
+                    background: rgba(50, 50, 50, 0.9);
                     opacity: 1;
                 }
                 
@@ -575,8 +576,8 @@ class LiveInterviewUI {
             style.id = 'vision-analysis-styles';
             style.textContent = `
                 .message.vision-analysis {
-                    border-left: 4px solid #6366f1;
-                    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05) 0%, rgba(139, 92, 246, 0.05) 100%);
+                    border-left: 4px solid #d9d9d9;
+                    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.05) 100%);
                 }
                 
                 .vision-header {
@@ -585,18 +586,18 @@ class LiveInterviewUI {
                     align-items: center;
                     margin-bottom: 12px;
                     padding-bottom: 8px;
-                    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
                 }
                 
                 .vision-header .label {
-                    color: #6366f1;
+                    color: #d9d9d9;
                     font-weight: 600;
                     font-size: 14px;
                 }
                 
                 .vision-meta {
                     font-size: 11px;
-                    color: #64748b;
+                    color: #6b6b6b;
                     font-weight: 500;
                     text-align: right;
                 }
@@ -608,14 +609,14 @@ class LiveInterviewUI {
                 .vision-content h1,
                 .vision-content h2,
                 .vision-content h3 {
-                    color: #6366f1;
+                    color: #d9d9d9;
                     margin-top: 20px;
                     margin-bottom: 10px;
                 }
                 
                 .vision-content h1 {
                     font-size: 18px;
-                    border-bottom: 2px solid rgba(99, 102, 241, 0.3);
+                    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
                     padding-bottom: 5px;
                 }
                 
@@ -628,7 +629,7 @@ class LiveInterviewUI {
                 }
                 
                 .vision-content code {
-                    background: rgba(99, 102, 241, 0.1);
+                    background: rgba(255, 255, 255, 0.1);
                     padding: 2px 6px;
                     border-radius: 3px;
                     font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
@@ -636,8 +637,8 @@ class LiveInterviewUI {
                 }
                 
                 .vision-content pre {
-                    background: rgba(15, 23, 42, 0.95);
-                    border: 1px solid rgba(99, 102, 241, 0.3);
+                    background: rgba(18, 18, 18, 0.95);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
                     border-radius: 6px;
                     padding: 16px;
                     margin: 12px 0;
@@ -648,7 +649,7 @@ class LiveInterviewUI {
                 .vision-content pre code {
                     background: none;
                     padding: 0;
-                    color: #e2e8f0;
+                    color: #eaeaea;
                     font-size: 13px;
                     line-height: 1.5;
                 }
@@ -665,15 +666,15 @@ class LiveInterviewUI {
                 }
                 
                 .vision-content strong {
-                    color: #6366f1;
+                    color: #d9d9d9;
                     font-weight: 600;
                 }
                 
                 .vision-content blockquote {
-                    border-left: 3px solid #6366f1;
+                    border-left: 3px solid #d9d9d9;
                     margin: 16px 0;
                     padding: 12px 16px;
-                    background: rgba(99, 102, 241, 0.05);
+                    background: rgba(255, 255, 255, 0.05);
                     border-radius: 0 4px 4px 0;
                 }
             `;
@@ -690,7 +691,7 @@ class LiveInterviewUI {
             style.id = 'streaming-response-styles';
             style.textContent = `
                 .streaming-indicator {
-                    color: #3b82f6;
+                    color: #c0c0c0;
                     font-weight: 500;
                     animation: pulse 1.5s ease-in-out infinite;
                     cursor: default !important;
@@ -731,21 +732,21 @@ class LiveInterviewUI {
                 }
                 
                 .response-meta.model-info {
-                    background: rgba(99, 102, 241, 0.08);
-                    color: #6366f1;
-                    border: 1px solid rgba(99, 102, 241, 0.2);
+                    background: rgba(255, 255, 255, 0.08);
+                    color: #d9d9d9;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
                 }
                 
                 .response-meta.fallback-info {
-                    background: rgba(245, 158, 11, 0.08);
-                    color: #d97706;
-                    border: 1px solid rgba(245, 158, 11, 0.2);
+                    background: rgba(255, 255, 255, 0.08);
+                    color: #8f8f8f;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
                 }
                 
                 .response-meta.error-info {
-                    background: rgba(239, 68, 68, 0.08);
-                    color: #dc2626;
-                    border: 1px solid rgba(239, 68, 68, 0.2);
+                    background: rgba(255, 255, 255, 0.08);
+                    color: #e6e6e6;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
                 }
                 
                 /* Real-time markdown pending content */
@@ -767,8 +768,8 @@ class LiveInterviewUI {
                     margin: 0.75rem 0;
                     border-radius: 6px;
                     overflow: hidden;
-                    background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
-                    border: 1px solid rgba(74, 85, 104, 0.4);
+                    background: linear-gradient(135deg, #2e2e2e 0%, #161616 100%);
+                    border: 1px solid rgba(78, 78, 78, 0.4);
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
                     position: relative;
                 }
@@ -778,14 +779,14 @@ class LiveInterviewUI {
                     justify-content: space-between;
                     align-items: center;
                     padding: 0.3rem 0.6rem;
-                    background: rgba(45, 55, 72, 0.8);
-                    border-bottom: 1px solid rgba(74, 85, 104, 0.3);
+                    background: rgba(48, 48, 48, 0.8);
+                    border-bottom: 1px solid rgba(78, 78, 78, 0.3);
                     min-height: 26px;
                 }
                 
                 .code-language {
                     font-size: 0.7rem;
-                    color: #a0aec0;
+                    color: #adadad;
                     font-weight: 500;
                     text-transform: uppercase;
                     letter-spacing: 0.8px;
@@ -793,9 +794,9 @@ class LiveInterviewUI {
                 }
                 
                 .copy-button {
-                    background: rgba(113, 128, 150, 0.08);
-                    border: 1px solid rgba(113, 128, 150, 0.2);
-                    color: #718096;
+                    background: rgba(130, 130, 130, 0.08);
+                    border: 1px solid rgba(130, 130, 130, 0.2);
+                    color: #757575;
                     padding: 0.1rem 0.25rem;
                     border-radius: 2px;
                     font-size: 0.55rem;
@@ -811,28 +812,28 @@ class LiveInterviewUI {
                 }
                 
                 .copy-button:hover {
-                    background: rgba(113, 128, 150, 0.15);
-                    color: #a0aec0;
-                    border-color: rgba(113, 128, 150, 0.35);
+                    background: rgba(130, 130, 130, 0.15);
+                    color: #adadad;
+                    border-color: rgba(130, 130, 130, 0.35);
                     opacity: 0.9;
                     transform: none;
                 }
                 
                 .copy-button:active {
-                    background: rgba(72, 187, 120, 0.15);
-                    color: #68d391;
-                    border-color: rgba(72, 187, 120, 0.3);
+                    background: rgba(255, 255, 255, 0.15);
+                    color: #c1c1c1;
+                    border-color: rgba(255, 255, 255, 0.3);
                     opacity: 1;
                 }
                 
                 .code-block {
                     margin: 0;
                     padding: 0.75rem;
-                    background: #1a202c !important;
+                    background: #161616 !important;
                     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     font-size: 0.85rem;
                     line-height: 1.4;
-                    color: #e2e8f0;
+                    color: #eaeaea;
                     overflow-x: auto;
                     white-space: pre;
                     border: none;
@@ -854,16 +855,16 @@ class LiveInterviewUI {
                 }
                 
                 .code-block::-webkit-scrollbar-track {
-                    background: rgba(45, 55, 72, 0.5);
+                    background: rgba(48, 48, 48, 0.5);
                 }
                 
                 .code-block::-webkit-scrollbar-thumb {
-                    background: rgba(113, 128, 150, 0.3);
+                    background: rgba(130, 130, 130, 0.3);
                     border-radius: 4px;
                 }
                 
                 .code-block::-webkit-scrollbar-thumb:hover {
-                    background: rgba(113, 128, 150, 0.5);
+                    background: rgba(130, 130, 130, 0.5);
                 }
             `;
             document.head.appendChild(style);
@@ -1111,6 +1112,7 @@ class LiveInterviewUI {
                 // The markdown parser already handles thinking content filtering
                 const finalContent = this.markdownParser.finalize();
                 this.currentStreamingContent.innerHTML = finalContent;
+                this.lastAIResponse = (this.currentStreamingContent.textContent || '').trim();
                 console.log('📝 Real-time markdown parsing finalized with thinking content filtering');
             } else if (metadata.forceFinalize) {
                 // For force finalize, just mark as complete with current content

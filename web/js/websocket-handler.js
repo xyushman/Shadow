@@ -173,6 +173,9 @@ export class WebSocketHandler {
             case 'session_reset_complete':
                 console.log('✅ Session reset confirmed by backend');
                 break;
+            case 'answer_feedback_ack':
+                devLog('✅ Answer feedback acknowledged:', data.payload?.rating);
+                break;
             default:
                 console.warn('Unknown message type:', data.type);
         }
@@ -278,6 +281,20 @@ export class WebSocketHandler {
         if (window.presetManager) {
             presetManager.showErrorNotification(payload.message);
         }
+    }
+
+    hideVisionProcessingStatus() {
+        const statusEl = document.getElementById('vision-processing-status');
+        if (statusEl) statusEl.remove();
+    }
+
+    showVisionProcessingStatus(screenshotCount, provider, model) {
+        this.hideVisionProcessingStatus();
+        const statusEl = document.createElement('div');
+        statusEl.id = 'vision-processing-status';
+        statusEl.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.9);color:#d9d9d9;padding:12px 20px;border-radius:6px;border-left:4px solid #d9d9d9;z-index:10000;font-size:13px;';
+        statusEl.textContent = `🔍 Processing ${screenshotCount} screenshot${screenshotCount > 1 ? 's' : ''} with ${provider} ${model}…`;
+        document.body.appendChild(statusEl);
     }
 
     sendMessage(type, payload) {

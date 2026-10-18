@@ -110,7 +110,7 @@ export function testStreamingMarkdown() {
         // Add title
         const title = document.createElement('h3');
         title.textContent = '🧪 Real-Time Markdown Test';
-        title.style.cssText = 'margin: 0 0 12px 0; color: #64d2ff;';
+        title.style.cssText = 'margin: 0 0 12px 0; color: #dcdcdc;';
         testContainer.appendChild(title);
         
         // Add content area
@@ -271,7 +271,7 @@ export function testSampleMarkdown() {
         // Add title
         const title = document.createElement('h3');
         title.textContent = '🧪 Sample Markdown Real-Time Test';
-        title.style.cssText = 'margin: 0 0 12px 0; color: #64d2ff;';
+        title.style.cssText = 'margin: 0 0 12px 0; color: #dcdcdc;';
         testContainer.appendChild(title);
         
         // Add content area
@@ -332,12 +332,12 @@ function startAutoCloseCountdown(container, seconds) {
         bottom: 8px;
         right: 8px;
         background: rgba(0, 0, 0, 0.8);
-        color: #fbbf24;
+        color: #8f8f8f;
         padding: 4px 8px;
         border-radius: 12px;
         font-size: 11px;
         font-weight: 500;
-        border: 1px solid rgba(251, 191, 36, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.3);
         backdrop-filter: blur(5px);
         z-index: 10001;
     `;

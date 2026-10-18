@@ -1,12 +1,31 @@
 import orjson
 import asyncio
 import base64
+import hashlib
 import threading
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from openai import AsyncOpenAI, APIStatusError
 from core.config import settings
 from core.key_utils import usable_keys
+
+
+def dedupe_screenshots(screenshots: List[Any]) -> List[Any]:
+    """Drop duplicate screenshots (identical payloads) while preserving order.
+
+    Re-queued or double-sent frames otherwise burn vision tokens analysing the
+    exact same pixels twice. Pure function — unit tested.
+    """
+    seen = set()
+    unique = []
+    for shot in screenshots:
+        key = hashlib.md5(str(shot).encode("utf-8", "ignore")).hexdigest()
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(shot)
+    return unique
+
 
 class VisionManager:
     """Vision AI Manager for screenshot analysis and code problem solving"""
@@ -83,6 +102,7 @@ class VisionManager:
         """Analyze screenshots with instant key rotation on any error — zero delay retries."""
         if not self.client:
             return "I'm sorry, the vision AI service is not available at this time.", {
+                "success": False,
                 "error": "No client available",
                 "provider": self.provider_name,
                 "model": self.model_name
@@ -171,6 +191,7 @@ class VisionManager:
         print(f"🚨 ALL VISION KEYS EXHAUSTED: {self.provider_name}-{self.model_name}")
         
         return error_msg, {
+            "success": False,
             "error": "all_keys_failed",
             "attempts": max_attempts,
             "provider": self.provider_name,
@@ -276,6 +297,7 @@ class VisionService:
         vision_manager = self.get_vision_manager(provider_name, model_name)
         if not vision_manager:
             return f"Vision model {provider_name} - {model_name} not available.", {
+                "success": False,
                 "error": "vision_model_not_found",
                 "provider": provider_name,
                 "model": model_name
@@ -428,7 +450,7 @@ A.  **Problem Understanding:**
         """Get status of all vision providers"""
         status = {}
         
-        for manager_key, manager in self.vision_managers.items():
+        for manager_key, manager in self.active_vision_providers.items():
             try:
                 # Perform health check
                 is_healthy = await manager.health_check()

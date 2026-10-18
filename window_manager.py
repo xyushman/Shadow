@@ -2,7 +2,7 @@
 # This module contains the core logic for managing the application's desktop window.
 # Its primary responsibility is to apply the necessary settings to prevent the window
 # from being captured by screen recording or sharing software (e.g., Teams, Zoom, OBS).
-# This is the "stealth" feature of the Aura application.
+# This is the "stealth" feature of the Shadow application.
 
 import os
 import ctypes
@@ -12,8 +12,7 @@ import time
 import tkinter as tk
 import platform
 from typing import Optional
-from threading import Thread
-from pynput import keyboard
+from threading import Thread, Timer
 from dotenv import dotenv_values
 
 # --- Scroll Configuration ---
@@ -51,6 +50,14 @@ SCROLL_AMOUNT_PX = _env_setting("SCROLL_SPEED_PX", 200, 1)
 SCROLL_INTERVAL_MS = _env_setting("SCROLL_INTERVAL_MS", 50, 10)
 SCREEN_SHARE_SCAN_INTERVAL_S = _env_setting("SCREEN_SHARE_SCAN_INTERVAL_S", 1.0, 0.2, float)
 
+
+def get_peek_seconds() -> float:
+    """Seconds an Alt+Z peek stays visible before auto-hiding (0 disables).
+
+    Read dynamically so tests and runtime changes are honoured. Never raises.
+    """
+    return _env_setting("STEALTH_PEEK_SECONDS", 10.0, 0.0, float)
+
 # --- Win32 API Constants ---
 # These flags are used with the SetWindowDisplayAffinity function.
 # WDA_EXCLUDEFROMCAPTURE is a comprehensive flag that prevents the window from being
@@ -77,6 +84,15 @@ _user32.SetWindowDisplayAffinity.argtypes = (wintypes.HWND, wintypes.DWORD)
 # This is a fallback method to find a window by its title if the primary method fails.
 _user32.FindWindowW.restype               = wintypes.HWND
 _user32.FindWindowW.argtypes              = (wintypes.LPCWSTR, wintypes.LPCWSTR)
+
+# Window-title access (used to scrub the native title while hidden so a
+# hidden-window enumeration scan cannot match the name "Shadow")
+_user32.GetWindowTextLengthW.argtypes     = (wintypes.HWND,)
+_user32.GetWindowTextLengthW.restype      = ctypes.c_int
+_user32.GetWindowTextW.argtypes           = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+_user32.GetWindowTextW.restype            = ctypes.c_int
+_user32.SetWindowTextW.argtypes           = (wintypes.HWND, wintypes.LPCWSTR)
+_user32.SetWindowTextW.restype            = wintypes.BOOL
 
 # Define function signatures for ShowWindow and IsWindowVisible
 _user32.ShowWindow.argtypes = (wintypes.HWND, wintypes.INT)
@@ -196,19 +212,12 @@ SCREEN_SHARE_INDICATORS = [
 # alone is not enough: several of these are generic shells, so the title must
 # also carry one of the verification keywords below.
 SCREEN_SHARE_CLASSES = [
-    # Browser notifications
-    "Chrome_WidgetWin_1",  # Chrome screen share notification
-    "MozillaDialogClass",  # Firefox screen share notification
-    "EdgeWebView2",        # Edge screen share notification
-    "OperaWindowClass",    # Opera browser
-    "BraveWindowClass",    # Brave browser
-    
     # Windows system notifications
     "NotificationPresenterHost",  # Windows notification
     "Windows.UI.Core.CoreWindow",  # Windows 10/11 notifications
     "ApplicationFrameHost",        # Windows 10/11 app frame
     "Shell_TrayWnd",              # System tray notifications
-    
+
     # Video conferencing
     "ZPContentViewWndClass",      # Zoom
     "ZPFloatToolbarClass",        # Zoom toolbar
@@ -216,7 +225,7 @@ SCREEN_SHARE_CLASSES = [
     "SkypeWindowClass",           # Skype
     "DiscordWindowClass",         # Discord
     "SlackWindowClass",           # Slack
-    
+
     # Screen recording software
     "Qt5QWindowIcon",             # OBS Studio
     "OBSWindowClass",             # OBS
@@ -226,7 +235,7 @@ SCREEN_SHARE_CLASSES = [
     "StreamlabsWindowClass",      # Streamlabs
     "FrapsWindowClass",           # Fraps
     "ActionWindowClass",          # Mirillis Action!
-    
+
     # Remote desktop tools
     "TeamViewer_DesktopWindowClass",  # TeamViewer
     "AnyDeskWindowClass",             # AnyDesk
@@ -234,12 +243,12 @@ SCREEN_SHARE_CLASSES = [
     "LogMeInWindowClass",             # LogMeIn
     "SplashtopWindowClass",           # Splashtop
     "ParsecWindowClass",              # Parsec
-    
+
     # System recording indicators
     "GameBarDisplayCaptureIndicator", # Xbox Game Bar
     "NvidiaGeForceExperience",        # Nvidia ShadowPlay
     "AMDReliveWindowClass",           # AMD ReLive
-    
+
     # Generic Windows classes
     "NotifyIconOverflowWindow",       # System tray overflow
     "ToolbarWindow32",                # Toolbar notifications
@@ -247,12 +256,48 @@ SCREEN_SHARE_CLASSES = [
     "Button"                          # Button controls
 ]
 
+# Browser main-frame window classes. These are the TOP-LEVEL windows of
+# browsers the user is actively using. They must NEVER be hidden, moved,
+# or minimized — doing so makes the browser vanish and the user thinks
+# it closed. Chrome/Edge share toasts are separate small child windows,
+# so excluding the main frame class does not lose real indicator hiding.
+BROWSER_MAIN_FRAME_CLASSES = {
+    "Chrome_WidgetWin_1",       # Chrome / Edge / Brave (all Chromium)
+    "MozillaWindowClass",       # Firefox main window
+    "MozillaDialogClass",       # Firefox dialog
+    "ApplicationFrameWindow",   # UWP app frame (Edge, etc.)
+    "OpusApp",                  # Opera
+    "CefMainWindowWindow",      # CEF-based browsers
+    "Intermediate D3D Window",  # Chrome GPU window
+    "Chrome_RenderWidgetHostHWND",
+}
+
 # A class match only counts as an indicator when the title contains one of these.
+#
+# These must stay MULTI-WORD phrases. A bare "screen" or "access" matches almost
+# any browser tab title ("Screen Sharing Policy", "Remote Access", "Display
+# Layouts", "Control Panel"), and since the top-level browser frame class is also
+# in SCREEN_SHARE_CLASSES, a single-word keyword made the auto-hider match and
+# hide the user's entire main browser window. A class match plus a generic word
+# is not enough evidence that a window is a share toast.
 SCREEN_SHARE_VERIFICATION_KEYWORDS = [
-    "sharing", "screen", "record", "capture", "desktop",
-    "monitor", "display", "streaming", "broadcast", "meeting",
-    "presentation", "remote", "control", "access"
+    "is sharing your screen", "are sharing your screen",
+    "sharing your screen", "sharing your desktop", "sharing your display",
+    "is recording your screen", "recording your screen", "recording your desktop",
+    "is capturing your screen", "screen share", "screen record",
+    "capture in progress", "recording in progress",
+    "presentation mode active", "broadcasting your",
+    "is being shared", "is being recorded",
+    "remote control", "remote desktop"
 ]
+
+# Auto-hiding is limited to small toast-sized windows. A real share indicator
+# is a small bubble (~300x150 px). A main application window (browser, editor,
+# exam client) is orders of magnitude larger. This is the safety net that stops
+# the monitor from ever hiding a real application window even if a title
+# happens to match.
+MAX_INDICATOR_WIDTH_PX = 400
+MAX_INDICATOR_HEIGHT_PX = 200
 
 # Precomputed lowercase needles. find_screen_share_indicators() matches these
 # against every top-level window on every scan tick, so lowercasing them once at
@@ -268,7 +313,12 @@ class WindowManager:
         self.current_transparency = 1.0
         self.is_ghost_mode = False
         self.screen_share_monitor_active = False
-        self.hidden_screen_share_windows = set()
+        self.hidden_screen_share_windows = {}  # hwnd -> original RECT tuple
+        self.stealth_active = False            # True once hide-by-default stealth is applied
+        self._peek_timer = None                # auto-hide timer for Alt+Z peeks
+        self._last_scroll_activity = 0.0       # monotonic stamp of last scroll hotkey repeat
+        self._native_title_scrubbed = False    # native title blanked while hidden
+        self._hidden_native_title = ""         # original title to restore on show
         
         # Continuous scrolling state
         self.scrolling_up = False
@@ -443,16 +493,17 @@ class WindowManager:
         return self.set_transparency(1.0)
     
     def find_window_by_title(self, title: str) -> Optional[int]:
-        """Find window handle by title"""
+        """Find this process's window handle by title (PID-filtered).
+
+        The old blind FindWindowW call could match another process's window
+        that happens to share the title — all stealth operations then silently
+        acted on the wrong window.
+        """
         if not self.is_windows:
             return None
             
         try:
-            FindWindowW = self.user32.FindWindowW
-            FindWindowW.argtypes = [wintypes.LPCWSTR, wintypes.LPCWSTR]
-            FindWindowW.restype = wintypes.HWND
-            
-            hwnd = FindWindowW(None, title)
+            hwnd = _find_own_window(title)
             if hwnd:
                 self.set_window_handle(hwnd)
                 return hwnd
@@ -461,8 +512,13 @@ class WindowManager:
             print(f"Error finding window: {e}")
             return None
 
-    def find_screen_share_indicators(self) -> list:
-        """Find all screen sharing indicator windows"""
+    def find_screen_share_indicators(self, only_visible: bool = True) -> list:
+        """Find all screen sharing indicator windows.
+
+        only_visible=False also returns indicators this app already hid —
+        needed to track whether a share is *active* (the window still exists)
+        rather than merely visible at this instant.
+        """
         if not self.is_windows:
             return []
         
@@ -480,6 +536,22 @@ class WindowManager:
                 class_length = self.GetClassNameW(hwnd, class_buffer, 256)
                 class_name = class_buffer.value if class_length > 0 else ""
                 
+                # A share indicator is a small toast, never a full application
+                # window. Bail out on anything large so a browser/editor/exam
+                # window can never be treated as an indicator, whatever its title.
+                rect = self.RECT()
+                if not self.GetWindowRect(hwnd, ctypes.byref(rect)):
+                    return True
+                width = rect.right - rect.left
+                height = rect.bottom - rect.top
+                if width > MAX_INDICATOR_WIDTH_PX or height > MAX_INDICATOR_HEIGHT_PX:
+                    return True
+
+                # NEVER touch a browser's main top-level window. This is the
+                # safety net that stops Chrome/Firefox/Edge from vanishing.
+                if class_name in BROWSER_MAIN_FRAME_CLASSES:
+                    return True
+
                 # Check if this looks like a screen sharing indicator
                 is_indicator = False
                 
@@ -500,13 +572,15 @@ class WindowManager:
                                 is_indicator = True
                                 break
                 
-                if is_indicator and _user32.IsWindowVisible(hwnd):
+                if is_indicator and (not only_visible or _user32.IsWindowVisible(hwnd)):
                     found_windows.append({
                         'hwnd': hwnd,
                         'title': title,
-                        'class': class_name
+                        'class': class_name,
+                        'rect': (rect.left, rect.top, rect.right, rect.bottom)
                     })
-                    print(f"🔍 Found screen share indicator: '{title}' (Class: {class_name})")
+                    if _user32.IsWindowVisible(hwnd):
+                        print(f"🔍 Found screen share indicator: '{title}' (Class: {class_name})")
                 
             except Exception as e:
                 # Continue enumeration even if one window fails
@@ -523,17 +597,27 @@ class WindowManager:
         
         return found_windows
 
-    def hide_screen_share_indicator(self, hwnd: int) -> bool:
+    def hide_screen_share_indicator(self, hwnd: int, rect=None) -> bool:
         """Hide a specific screen sharing indicator window"""
         if not self.is_windows:
             return False
         
         try:
-            # Method 1: Try to hide the window completely
-            result = _user32.ShowWindow(hwnd, SW_HIDE)
-            if result:
+            # Remember where the window was so it can be put back later.
+            # Nothing in the app restored these windows before, which is why a
+            # wrongly hidden window stayed gone for the rest of the session.
+            if rect is None:
+                probe = self.RECT()
+                if self.GetWindowRect(hwnd, ctypes.byref(probe)):
+                    rect = (probe.left, probe.top, probe.right, probe.bottom)
+
+            # Method 1: Try to hide the window completely.
+            # ShowWindow returns the *previous* visibility state, not success, so
+            # its return value cannot be used as a success flag. Check afterwards.
+            _user32.ShowWindow(hwnd, SW_HIDE)
+            if not _user32.IsWindowVisible(hwnd):
                 print(f"✅ Hidden screen share indicator (HWND: {hex(hwnd)})")
-                self.hidden_screen_share_windows.add(hwnd)
+                self.hidden_screen_share_windows[hwnd] = rect
                 return True
             
             # Method 2: Try to move it off-screen if hiding failed
@@ -542,9 +626,10 @@ class WindowManager:
                     hwnd, 0, 
                     -10000, -10000,  # Move far off-screen
                     0, 0,  # Don't change size
-                    self.SWP_NOSIZE
+                    self.SWP_NOSIZE | self.SWP_NOZORDER | self.SWP_NOACTIVATE
                 )
                 print(f"✅ Moved screen share indicator off-screen (HWND: {hex(hwnd)})")
+                self.hidden_screen_share_windows[hwnd] = rect
                 return True
             except:
                 pass
@@ -553,6 +638,7 @@ class WindowManager:
             try:
                 _user32.ShowWindow(hwnd, 6)  # SW_MINIMIZE
                 print(f"✅ Minimized screen share indicator (HWND: {hex(hwnd)})")
+                self.hidden_screen_share_windows[hwnd] = rect
                 return True
             except:
                 pass
@@ -563,6 +649,28 @@ class WindowManager:
         except Exception as e:
             print(f"❌ Error hiding screen share indicator: {e}")
             return False
+
+    def restore_hidden_indicators(self) -> int:
+        """Re-show and re-position every window this monitor hid, then clear the cache."""
+        restored = 0
+        for hwnd, rect in list(self.hidden_screen_share_windows.items()):
+            try:
+                if not _user32.IsWindow(hwnd):
+                    continue  # Window is gone; nothing to restore.
+                if rect:
+                    self.SetWindowPos(
+                        hwnd, 0, rect[0], rect[1],
+                        0, 0,
+                        self.SWP_NOSIZE | self.SWP_NOZORDER | self.SWP_NOACTIVATE
+                    )
+                _user32.ShowWindow(hwnd, SW_SHOWNOACTIVATE)
+                restored += 1
+            except Exception as e:
+                print(f"⚠️ Could not restore window {hex(hwnd)}: {e}")
+        self.hidden_screen_share_windows.clear()
+        if restored:
+            print(f"♻️ Restored {restored} previously hidden window(s)")
+        return restored
 
     def hide_all_screen_share_indicators(self) -> int:
         """Find and hide all screen sharing indicators"""
@@ -575,7 +683,7 @@ class WindowManager:
         for indicator in indicators:
             hwnd = indicator['hwnd']
             if hwnd not in self.hidden_screen_share_windows:
-                if self.hide_screen_share_indicator(hwnd):
+                if self.hide_screen_share_indicator(hwnd, indicator.get('rect')):
                     hidden_count += 1
         
         if hidden_count > 0:
@@ -592,9 +700,26 @@ class WindowManager:
         self.screen_share_monitor_active = True
         
         def monitor_thread():
+            share_was_active = False
             while self.screen_share_monitor_active:
                 try:
-                    self.hide_all_screen_share_indicators()
+                    # Existence-based (not visibility-based): we hide these
+                    # indicators ourselves, so "visible right now" would flap.
+                    indicators = self.find_screen_share_indicators(only_visible=False)
+                    for indicator in indicators:
+                        if _user32.IsWindowVisible(indicator['hwnd']) and indicator['hwnd'] not in self.hidden_screen_share_windows:
+                            self.hide_screen_share_indicator(indicator['hwnd'], indicator.get('rect'))
+
+                    # Rising edge: a share just appeared while Shadow is on screen
+                    # (e.g. the user shared before the interview formally started).
+                    # Hide immediately — the interview-start hide would come later.
+                    share_active = bool(indicators)
+                    if share_active and not share_was_active:
+                        if self.stealth_active and self.hwnd and _user32.IsWindowVisible(self.hwnd):
+                            print("🖥️ Screen share detected — hiding Shadow immediately (stealth)")
+                            self.hide_window()
+                    share_was_active = share_active
+
                     time.sleep(SCREEN_SHARE_SCAN_INTERVAL_S)  # Configurable via .env
                 except Exception as e:
                     print(f"❌ Error in screen share monitor: {e}")
@@ -608,6 +733,9 @@ class WindowManager:
         """Stop monitoring for screen sharing indicators"""
         if self.screen_share_monitor_active:
             self.screen_share_monitor_active = False
+            # Give the thread a moment to notice the flag before restoring.
+            time.sleep(SCREEN_SHARE_SCAN_INTERVAL_S + 0.2)
+            self.restore_hidden_indicators()
             print("🛑 Screen sharing indicator monitor stopped")
     
     def set_always_on_top(self, on_top: bool) -> bool:
@@ -827,6 +955,88 @@ class WindowManager:
             return False
 
 
+    def _cancel_peek_timer(self):
+        """Cancel a pending auto-hide timer, if one is running."""
+        if self._peek_timer is not None:
+            try:
+                self._peek_timer.cancel()
+            except Exception:
+                pass
+            self._peek_timer = None
+
+    def _scrub_title(self):
+        """Blank the native window title while hidden.
+
+        SW_HIDE windows remain enumerable — a proctoring scan that lists
+        hidden top-level windows would otherwise match the name "Shadow".
+        """
+        if not self.is_windows or not self.hwnd or self._native_title_scrubbed:
+            return
+        try:
+            length = _user32.GetWindowTextLengthW(self.hwnd)
+            if length > 0:
+                buf = ctypes.create_unicode_buffer(length + 1)
+                _user32.GetWindowTextW(self.hwnd, buf, length + 1)
+                self._hidden_native_title = buf.value
+            _user32.SetWindowTextW(self.hwnd, "")
+            self._native_title_scrubbed = True
+        except Exception as e:
+            print(f"⚠️ Could not scrub window title: {e}")
+
+    def _restore_title(self):
+        """Restore the native window title after a peek/show."""
+        if not self.is_windows or not self.hwnd or not self._native_title_scrubbed:
+            return
+        try:
+            _user32.SetWindowTextW(self.hwnd, self._hidden_native_title or "Shadow")
+            self._native_title_scrubbed = False
+        except Exception as e:
+            print(f"⚠️ Could not restore window title: {e}")
+
+    def _start_peek_timer(self):
+        """Auto-hide the window STEALTH_PEEK_SECONDS after it is shown (0 disables)."""
+        self._cancel_peek_timer()
+        seconds = get_peek_seconds()
+        if seconds <= 0:
+            return
+
+        def _auto_hide():
+            if self.hwnd and _user32.IsWindow(self.hwnd) and _user32.IsWindowVisible(self.hwnd):
+                _user32.ShowWindow(self.hwnd, SW_HIDE)
+                self.set_ghost_mode(False)
+                self._scrub_title()
+                print(f"🕵️‍ Window auto-hidden after {seconds:.0f}s peek (stealth).")
+
+        self._peek_timer = Timer(seconds, _auto_hide)
+        self._peek_timer.daemon = True
+        self._peek_timer.start()
+        print(f"⏱️ Peek auto-hide in {seconds:.0f}s (STEALTH_PEEK_SECONDS=0 to disable).")
+
+    def hide_window(self) -> bool:
+        """Programmatically hide the Shadow window (stealth)."""
+        if not self.is_windows or not self.hwnd:
+            return False
+        self._cancel_peek_timer()
+        was_visible = bool(_user32.IsWindowVisible(self.hwnd))
+        _user32.ShowWindow(self.hwnd, SW_HIDE)
+        self.set_ghost_mode(False)
+        self._scrub_title()
+        if was_visible:
+            print("🕵️‍ Window hidden (stealth) — press Alt+Z to peek.")
+        return True
+
+    def show_window(self) -> bool:
+        """Show the Shadow window without focus change and without auto-hide (e.g. after interview ends)."""
+        if not self.is_windows or not self.hwnd:
+            return False
+        self._cancel_peek_timer()
+        _user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
+        self._restore_title()
+        self.set_ghost_mode(False)  # interactive again once the interview is over
+        self.set_always_on_top(True)
+        print("✨ Window shown (no auto-hide) — Alt+Z hides it again.")
+        return True
+
     def toggle_visibility(self):
         """Toggle the window's visibility without changing focus (stealth mode)."""
         if not self.is_windows or not self.hwnd:
@@ -834,15 +1044,24 @@ class WindowManager:
             return
 
         if _user32.IsWindowVisible(self.hwnd):
+            self._cancel_peek_timer()
             _user32.ShowWindow(self.hwnd, SW_HIDE)
+            self.set_ghost_mode(False)
+            self._scrub_title()
             print("🕵️‍ Window hidden via global hotkey.")
         else:
             # Use SW_SHOWNOACTIVATE to show window without giving it focus
             # This prevents proctoring software from detecting focus changes
             _user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
-            print("✨ Window shown via global hotkey (stealth - no focus change).")
+            self._restore_title()
+            # Click-through while peeking: any click falls through to the app
+            # behind, so the interview page NEVER receives a blur event.
+            # (Alt+X disables this manually if you need to click Shadow itself.)
+            self.set_ghost_mode(True)
+            print("✨ Window shown via global hotkey (stealth - no focus, click-through).")
             # Re-apply always-on-top state when showing the window
             self.set_always_on_top(True)
+            self._start_peek_timer()
 
     def hide_from_taskbar(self) -> bool:
         """Hide the window from the taskbar by setting WS_EX_TOOLWINDOW."""
@@ -969,9 +1188,23 @@ class WindowManager:
             self.send_interview_command("reset_interview")
             return False
 
-        # Add single press scroll handlers for initial response
+        def on_answer_feedback_good():
+            """Rate last AI answer as good (Alt+G)"""
+            self.send_answer_feedback("good")
+            return False
+
+        def on_answer_feedback_bad():
+            """Rate last AI answer as missed/bad (Alt+B)"""
+            self.send_answer_feedback("bad")
+            return False
+
+        # --- Scroll hold-to-repeat via OS key repeat -------------------------
+        # The old pynput release listener required WH_KEYBOARD_LL. Instead we
+        # register Alt+Up/Down WITHOUT MOD_NOREPEAT so the OS auto-repeat keeps
+        # stamping activity, and a watchdog stops scrolling when repeats cease.
         def on_scroll_up_start():
             """Start continuous scroll up (Alt+Up)"""
+            self._last_scroll_activity = time.monotonic()
             if not self.scrolling_up:
                 self.scrolling_up = True
                 self._start_continuous_scrolling()
@@ -980,73 +1213,107 @@ class WindowManager:
 
         def on_scroll_down_start():
             """Start continuous scroll down (Alt+Down)"""
+            self._last_scroll_activity = time.monotonic()
             if not self.scrolling_down:
                 self.scrolling_down = True
                 self._start_continuous_scrolling()
                 print("🔽 Starting continuous scroll down")
             return False
 
-        # Create a separate listener for key releases to stop scrolling
-        def start_release_listener():
-            """Background thread to handle key releases for stopping continuous scroll"""
-            import threading
-            
-            def on_key_release(key):
-                try:
-                    if key == keyboard.Key.up and self.scrolling_up:
+        def scroll_watchdog():
+            """Stop scrolling when OS key-repeat stops (i.e. key released)."""
+            while True:
+                time.sleep(0.15)
+                if self.scrolling_up or self.scrolling_down:
+                    if time.monotonic() - self._last_scroll_activity > 0.3:
                         self.scrolling_up = False
-                        print("🛑 Stopped continuous scroll up")
-                    elif key == keyboard.Key.down and self.scrolling_down:
                         self.scrolling_down = False
-                        print("🛑 Stopped continuous scroll down")
-                except:
-                    pass
+                        print("🛑 Stopped continuous scroll (key released)")
 
-            def on_key_press(key):
-                # We don't need to handle press here since GlobalHotKeys handles it
-                pass
+        Thread(target=scroll_watchdog, daemon=True).start()
 
-            release_listener = keyboard.Listener(
-                on_press=on_key_press,
-                on_release=on_key_release,
-                suppress=False
-            )
-            release_listener.start()
-            release_listener.join()
-
-        # Start the release listener in background
-        release_thread = Thread(target=start_release_listener, daemon=True)
-        release_thread.start()
-
-        # Regular hotkeys using the proven GlobalHotKeys approach
-        hotkey_map = {
-            '<alt>+x': on_toggle_ghost,
-            '<alt>+z': on_hide_show,
-            '<alt>+v': on_toggle_vision_mode,  # Toggle vision mode
-            '<alt>+s': on_capture_screenshot,  # Capture screenshot (replaces screen share hide)
-            '<alt>+p': on_process_screenshots, # Process screenshots
-            '<alt>+r': on_reset_screenshot_queue, # Reset screenshot queue
-            '<alt>+q': on_switch_primary,      # Switch to primary preset
-            '<alt>+w': on_switch_secondary,    # Switch to secondary preset
-            '<alt>+e': on_auto_select,         # Auto-select best AI preset
-            '<alt>+t': on_switch_vision_model,   # Switch vision model
-            '<alt>+m': on_toggle_mic_mute,     # Toggle microphone mute
-            '<alt>+u': on_toggle_universal_mute, # Toggle universal mute (pause)
-            '<alt>+1': on_transparency_transparent,  # 40% opacity (transparent)
-            '<alt>+2': on_transparency_semi,         # 70% opacity (semi-transparent)
-            '<alt>+3': on_transparency_opaque,       # 100% opacity (opaque)
-            '<alt>+<shift>+s': on_enable_proctoring_stealth,  # Enable proctoring stealth mode
-            '<alt>+<left>': on_move_left,      # Move window left
-            '<alt>+<right>': on_move_right,    # Move window right
-            '<alt>+i': on_move_up,             # Move window up (SWAPPED)
-            '<alt>+j': on_move_down,           # Move window down (SWAPPED)
-            '<alt>+o': on_reset_interview,     # Reset interview session
-            '<alt>+<up>': on_scroll_up_start,  # Start continuous scroll up (NEW)
-            '<alt>+<down>': on_scroll_down_start,  # Start continuous scroll down (NEW)
+        # --- Hotkey dispatch: Win32 RegisterHotKey (NO keyboard hook) -------
+        # pynput's GlobalHotKeys installs a WH_KEYBOARD_LL hook that any
+        # proctoring software can enumerate as an injection-capable listener.
+        # RegisterHotKey installs no hook at all: the OS posts WM_HOTKEY to
+        # this thread's queue only for the exact combos registered below.
+        MOD_ALT = 0x0001
+        MOD_SHIFT = 0x0004
+        MOD_NOREPEAT = 0x4000
+        WM_HOTKEY = 0x0312
+        VK = {
+            'x': 0x58, 'z': 0x5A, 'v': 0x56, 's': 0x53, 'p': 0x50, 'r': 0x52,
+            'q': 0x51, 'w': 0x57, 'e': 0x45, 't': 0x54, 'm': 0x4D, 'u': 0x55,
+            '1': 0x31, '2': 0x32, '3': 0x33, 'o': 0x4F, 'i': 0x49, 'j': 0x4A,
+            'g': 0x47, 'b': 0x42,
+            'left': 0x25, 'right': 0x27, 'up': 0x26, 'down': 0x28,
         }
-        
-        with keyboard.GlobalHotKeys(hotkey_map) as h:
-            h.join()
+
+        # (modifiers, virtual-key, handler, description)
+        # MOD_NOREPEAT everywhere except the scroll keys (which rely on repeat).
+        specs = [
+            (MOD_ALT | MOD_NOREPEAT, VK['x'], on_toggle_ghost, 'Alt+X: Toggle ghost mode (click-through)'),
+            (MOD_ALT | MOD_NOREPEAT, VK['z'], on_hide_show, 'Alt+Z: Toggle window visibility (stealth)'),
+            (MOD_ALT | MOD_NOREPEAT, VK['v'], on_toggle_vision_mode, 'Alt+V: Toggle vision mode'),
+            (MOD_ALT | MOD_NOREPEAT, VK['s'], on_capture_screenshot, 'Alt+S: Capture screenshot'),
+            (MOD_ALT | MOD_NOREPEAT, VK['p'], on_process_screenshots, 'Alt+P: Process screenshots with AI'),
+            (MOD_ALT | MOD_NOREPEAT, VK['r'], on_reset_screenshot_queue, 'Alt+R: Reset screenshot queue'),
+            (MOD_ALT | MOD_NOREPEAT, VK['q'], on_switch_primary, 'Alt+Q: Switch to primary AI preset'),
+            (MOD_ALT | MOD_NOREPEAT, VK['w'], on_switch_secondary, 'Alt+W: Switch to secondary AI preset'),
+            (MOD_ALT | MOD_NOREPEAT, VK['e'], on_auto_select, 'Alt+E: Auto-select best AI preset'),
+            (MOD_ALT | MOD_NOREPEAT, VK['t'], on_switch_vision_model, 'Alt+T: Switch vision model'),
+            (MOD_ALT | MOD_NOREPEAT, VK['m'], on_toggle_mic_mute, 'Alt+M: Toggle microphone mute'),
+            (MOD_ALT | MOD_NOREPEAT, VK['u'], on_toggle_universal_mute, 'Alt+U: Toggle universal mute (pause)'),
+            (MOD_ALT | MOD_NOREPEAT, VK['1'], on_transparency_transparent, 'Alt+1: Set transparent (40% opacity)'),
+            (MOD_ALT | MOD_NOREPEAT, VK['2'], on_transparency_semi, 'Alt+2: Set semi-transparent (70% opacity)'),
+            (MOD_ALT | MOD_NOREPEAT, VK['3'], on_transparency_opaque, 'Alt+3: Set opaque (100% opacity)'),
+            (MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK['s'], on_enable_proctoring_stealth, 'Alt+Shift+S: Enable proctoring stealth mode'),
+            (MOD_ALT | MOD_NOREPEAT, VK['left'], on_move_left, 'Alt+Left: Move window left'),
+            (MOD_ALT | MOD_NOREPEAT, VK['right'], on_move_right, 'Alt+Right: Move window right'),
+            (MOD_ALT | MOD_NOREPEAT, VK['i'], on_move_up, 'Alt+I: Move window up'),
+            (MOD_ALT | MOD_NOREPEAT, VK['j'], on_move_down, 'Alt+J: Move window down'),
+            (MOD_ALT | MOD_NOREPEAT, VK['o'], on_reset_interview, 'Alt+O: Reset interview session'),
+            (MOD_ALT | MOD_NOREPEAT, VK['g'], on_answer_feedback_good, 'Alt+G: Rate last AI answer as good'),
+            (MOD_ALT | MOD_NOREPEAT, VK['b'], on_answer_feedback_bad, 'Alt+B: Rate last AI answer as missed/bad'),
+            (MOD_ALT, VK['up'], on_scroll_up_start, 'Alt+Up: Scroll up (hold for continuous)'),
+            (MOD_ALT, VK['down'], on_scroll_down_start, 'Alt+Down: Scroll down (hold for continuous)'),
+        ]
+
+        register_hotkey = _user32.RegisterHotKey
+        register_hotkey.argtypes = [wintypes.HWND, ctypes.c_int, ctypes.c_uint, ctypes.c_uint]
+        register_hotkey.restype = ctypes.c_bool
+        unregister_hotkey = _user32.UnregisterHotKey
+        unregister_hotkey.argtypes = [wintypes.HWND, ctypes.c_int]
+        unregister_hotkey.restype = ctypes.c_bool
+        get_message = _user32.GetMessageW
+        get_message.argtypes = [ctypes.POINTER(wintypes.MSG), wintypes.HWND, ctypes.c_uint, ctypes.c_uint]
+        get_message.restype = ctypes.c_int
+
+        callbacks = {}
+        registered_ids = []
+        for hotkey_id, (mods, vk, handler, description) in enumerate(specs, start=1):
+            if register_hotkey(None, hotkey_id, mods, vk):
+                callbacks[hotkey_id] = handler
+                registered_ids.append(hotkey_id)
+                print(f"   ✔ {description}")
+            else:
+                print(f"   ⚠ RegisterHotKey failed for {description} (error {ctypes.GetLastError()})")
+
+        msg = wintypes.MSG()
+        try:
+            # Blocks until WM_QUIT; posts to THIS thread's queue (hence the loop
+            # must live on the thread that called RegisterHotKey — it does).
+            while get_message(ctypes.byref(msg), None, 0, 0) > 0:
+                if msg.message == WM_HOTKEY:
+                    handler = callbacks.get(int(msg.wParam))
+                    if handler:
+                        try:
+                            handler()
+                        except Exception as handler_err:
+                            print(f"❌ Hotkey handler error: {handler_err}")
+        finally:
+            for hotkey_id in registered_ids:
+                unregister_hotkey(None, hotkey_id)
 
     def send_preset_switch_signal(self, preset_key: str):
         """Send preset switch signal to the application"""
@@ -1129,6 +1396,20 @@ class WindowManager:
         except Exception as e:
             print(f"❌ Error sending vision switch command: {e}")
 
+    def send_answer_feedback(self, rating: str):
+        """Send last-answer feedback (Alt+G good / Alt+B missed) to the app."""
+        try:
+            from datetime import datetime
+            print(f"🎯 Global hotkey triggered: answer_feedback ({rating})")
+            self._write_command_file({
+                "command": "answer_feedback",
+                "rating": rating,
+                "timestamp": datetime.now().isoformat(),
+                "source": "global_hotkey"
+            })
+        except Exception as e:
+            print(f"❌ Error sending answer feedback: {e}")
+
     def send_interview_command(self, command: str):
         """Send interview-related command to the application"""
         try:
@@ -1192,7 +1473,7 @@ class WindowManager:
         
         # Write command to a temp file that could be monitored
         temp_dir = tempfile.gettempdir()
-        command_file = os.path.join(temp_dir, "aura_command.json")
+        command_file = os.path.join(temp_dir, "shadow_command.json")
         
         with open(command_file, "w") as f:
             json.dump(command_data, f)
@@ -1218,6 +1499,8 @@ class WindowManager:
         print("   Alt+P: Process screenshots with AI")
         print("   Alt+R: Reset screenshot queue")
         print("   Alt+O: Reset interview session")
+        print("   Alt+G: Rate last AI answer as good")
+        print("   Alt+B: Rate last AI answer as missed/bad")
         print("   Alt+Q: Switch to primary AI preset")
         print("   Alt+W: Switch to secondary AI preset")
         print("   Alt+E: Auto-select best AI preset")
@@ -1231,8 +1514,8 @@ class WindowManager:
         
         # Ensure we have the handle before starting
         if not self.hwnd:
-            if not self.find_window_by_title("Aura"):
-                 print("❌ Cannot start hotkey listener: Aura window not found.")
+            if not self.find_window_by_title("Shadow"):
+                 print("❌ Cannot start hotkey listener: Shadow window not found.")
                  return
         
         listener_thread = Thread(target=self._start_hotkey_listener_thread, daemon=True)
@@ -1262,9 +1545,9 @@ def make_app_opaque() -> bool:
     """Make app window fully opaque"""
     return window_manager.make_opaque()
 
-def find_aura_window() -> bool:
-    """Find and set Aura window for transparency control"""
-    hwnd = window_manager.find_window_by_title("Aura")
+def find_shadow_window() -> bool:
+    """Find and set Shadow window for transparency control"""
+    hwnd = window_manager.find_window_by_title("Shadow")
     return hwnd is not None
 
 def set_app_always_on_top(on_top: bool) -> bool:
@@ -1313,75 +1596,145 @@ def test_screen_share_detection():
     
     return indicators
 
+def _find_own_window(title: str) -> Optional[int]:
+    """Return the top-level window titled `title` owned by this process, else None.
+
+    Filters by PID so we never attach to another process's window that happens
+    to share the name — a blind FindWindowW title match could do exactly that.
+    """
+    target_pid = os.getpid()
+    user32 = _user32
+    found = []
+
+    get_text_len = user32.GetWindowTextLengthW
+    get_text_len.argtypes = (wintypes.HWND,)
+    get_text_len.restype = ctypes.c_int
+    get_text = user32.GetWindowTextW
+    get_text.argtypes = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
+    get_text.restype = ctypes.c_int
+    get_pid = user32.GetWindowThreadProcessId
+    get_pid.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+    get_pid.restype = wintypes.DWORD
+    user32.EnumWindows.argtypes = (ctypes.c_void_p, wintypes.LPARAM)
+    user32.EnumWindows.restype = wintypes.BOOL
+
+    @ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    def enum_cb(hwnd, _lparam):
+        pid = wintypes.DWORD(0)
+        get_pid(hwnd, ctypes.byref(pid))
+        if pid.value != target_pid:
+            return True
+        length = get_text_len(hwnd)
+        if length <= 0:
+            return True
+        buf = ctypes.create_unicode_buffer(length + 1)
+        get_text(hwnd, buf, length + 1)
+        if buf.value == title:
+            found.append(int(hwnd))
+            return False  # stop enumeration — match found
+        return True
+
+    user32.EnumWindows(enum_cb, 0)
+    return found[0] if found else None
+
+
 def apply_capture_protection(window):
     """
-    Applies display affinity to exclude the window from screen capture.
+    Applies hide-by-default stealth to the Shadow window.
 
-    This function is the heart of the "stealth" feature. It first tries to get
-    the window handle directly from a private pywebview attribute and, if that fails,
-    falls back to searching for the window by its title.
+    Windows has no API for a window that is visible to the user but fully
+    invisible in screen capture (WDA_EXCLUDEFROMCAPTURE renders a black
+    rectangle; transparency still leaks content). So instead:
+
+    1. The window stays visible during onboarding/setup only.
+    2. When the interview starts it is hidden with SW_HIDE — while hidden
+       it does not exist for the screen compositor, so it appears NOWHERE
+       in the share: no black rectangle, no content.
+    3. Alt+Z peeks it back for STEALTH_PEEK_SECONDS (default 10s), then it
+       auto-hides. While peeked it IS visible in the share — peek briefly.
+    4. Hidden from taskbar, always-on-top, never steals focus.
+
+    Set STEALTH_MODE=blackout in .env to fall back to the old
+    WDA_EXCLUDEFROMCAPTURE approach if desired.
 
     Args:
         window: The pywebview window object.
     """
     hwnd = None
-    print("🛡️ APPLYING SCREEN CAPTURE PROTECTION...")
+    print("🛡️ APPLYING HIDE-BY-DEFAULT STEALTH MODE...")
 
     # --- Method 1: Get handle from pywebview's private attribute ---
-    # This is the preferred method as it's direct and not dependent on the window title.
-    # We use getattr for safety, in case this private attribute changes in future versions.
     hwnd = getattr(window, '_hwnd', None)
+    if hwnd and not _user32.IsWindow(hwnd):
+        print(f"⚠️ window._hwnd {hex(hwnd)} is not a live window — discarding")
+        hwnd = None
     print(f"🔍 Method 1 (window._hwnd): {hex(hwnd) if hwnd else 'Not found'}")
 
-    # --- Method 2: Fallback to finding the window by title ---
-    # If the private attribute doesn't exist, we use a classic Win32 function.
+    # --- Method 2: PID-filtered EnumWindows (up to ~1s of retries) ---
+    # FindWindowW matches ANY process's window titled "Shadow", so it can attach
+    # to an unrelated window (another app's Shadow-named dialog, etc). We only
+    # ever accept a top-level window owned by this process.
     if not hwnd:
-        print("⚠️ Private attribute not found, trying title search...")
-        # A small delay is crucial here. It gives the OS time to register the
-        # native window after the 'shown' event has fired.
-        time.sleep(0.2)
-        hwnd = _user32.FindWindowW(None, window.title)
-        print(f"🔍 Method 2 (FindWindowW with title '{window.title}'): {hex(hwnd) if hwnd else 'Not found'}")
-
-    # --- Method 3: Try multiple search attempts with delay ---
-    if not hwnd:
-        print("⚠️ Trying multiple search attempts...")
-        for attempt in range(5):
-            time.sleep(0.05)
-            hwnd = _user32.FindWindowW(None, "Aura")
+        print("⚠️ Private attribute not found, enumerating this process's windows...")
+        title = window.title or "Shadow"
+        for attempt in range(10):
+            time.sleep(0.1)
+            hwnd = _find_own_window(title)
             if hwnd:
-                print(f"🔍 Method 3 (attempt {attempt + 1}): Found {hex(hwnd)}")
+                print(f"🔍 Method 2 (EnumWindows PID-filtered, attempt {attempt + 1}): Found {hex(hwnd)}")
                 break
-        
-    # --- Apply the Protection ---
+
     if not hwnd:
-        print("❌ CRITICAL: Could not obtain window handle! Screen capture protection NOT applied!")
-        print("   This means the window WILL be visible in screen recordings!")
+        print("❌ CRITICAL: Could not obtain window handle!")
         return False
 
-    print(f"🛡️ Applying WDA_EXCLUDEFROMCAPTURE (0x{WDA_EXCLUDEFROMCAPTURE:08X}) to window {hex(hwnd)}...")
-    success = _user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
+    # --- Optional: old blackout mode via STEALTH_MODE env var ---
+    # Read via os.environ OR .env file: nothing calls load_dotenv(), so an
+    # os.environ-only lookup silently ignored .env (STEALTH_MODE lives there).
+    stealth_mode = (os.environ.get("STEALTH_MODE") or _ENV_FILE_VALUES.get("STEALTH_MODE") or "invisible").strip().lower()
+    if stealth_mode == "blackout":
+        print(f"🛡️ [BLACKOUT MODE] Applying WDA_EXCLUDEFROMCAPTURE (0x{WDA_EXCLUDEFROMCAPTURE:08X}) to window {hex(hwnd)}...")
+        success = _user32.SetWindowDisplayAffinity(hwnd, WDA_EXCLUDEFROMCAPTURE)
+        if success:
+            print("   🎯 Window will appear as BLACK RECTANGLE in recordings/screen sharing")
+            window_manager.set_window_handle(hwnd)
+            window_manager.hide_from_taskbar()
+            window_manager.start_screen_share_monitor()
+            verify_protection(hwnd)
+            return True
+        else:
+            error_code = ctypes.GetLastError()
+            print(f"❌ FAILED: SetWindowDisplayAffinity failed! Error Code: {error_code}")
+            print("   🚨 WARNING: Window WILL be visible in screen recordings!")
+            return False
 
-    if success:
-        print(f"✅ SUCCESS: Window {hex(hwnd)} is now HIDDEN from screen capture!")
-        print("   🎯 Window will appear as BLACK RECTANGLE in recordings/screen sharing")
-        
-        # Set window handle and hide from taskbar
-        window_manager.set_window_handle(hwnd)
-        window_manager.hide_from_taskbar()
-        
-        # Start screen share indicator monitoring
-        window_manager.start_screen_share_monitor()
-        
-        # Verify the protection was applied
-        verify_protection(hwnd)
-        return True
-    else:
-        # If the function fails, we get the last error code from the OS for debugging.
-        error_code = ctypes.GetLastError()
-        print(f"❌ FAILED: SetWindowDisplayAffinity failed! Error Code: {error_code}")
-        print("   🚨 WARNING: Window WILL be visible in screen recordings!")
-        return False
+    # --- Default: HIDE-BY-DEFAULT MODE (window not capturable because it
+    #     is simply not on screen) ---
+
+    # 1. Register the window handle so Alt+Z and programmatic hide work.
+    window_manager.set_window_handle(hwnd)
+    window_manager.stealth_active = True
+
+    # 2. Hidden from taskbar — no taskbar entry to notice while peeked.
+    window_manager.hide_from_taskbar()
+
+    # 3. Always on top so peeks appear above everything else.
+    window_manager.set_always_on_top(True)
+
+    # 4. Hide Microsoft Teams/Meet "you are sharing" indicators (same as blackout mode).
+    window_manager.start_screen_share_monitor()
+
+    # 5. Keep the window visible for now (onboarding/setup). It is hidden
+    #    automatically the moment the interview starts (session_manager),
+    #    and Alt+Z peeks it back for STEALTH_PEEK_SECONDS at a time.
+    print("✅ HIDE-BY-DEFAULT STEALTH MODE ENABLED")
+    print("   📌 Window stays on screen during setup, then auto-hides when the interview starts")
+    print("   📌 Also auto-hides the moment a screen share is detected (rising edge)")
+    print("   📌 While hidden it is absent from screen shares — NO black rectangle, NO content")
+    print("   📌 Native title is blanked while hidden (survives hidden-window scans)")
+    print("   📌 Alt+Z: peek — click-through + focus kept, auto-hides after STEALTH_PEEK_SECONDS (default 10s)")
+
+    return True
 
 def verify_protection(hwnd) -> Optional[bool]:
     """Verify that capture protection is actually applied.
@@ -1428,7 +1781,7 @@ if __name__ == '__main__':
 
     # Create a pywebview window for testing purposes
     test_window = webview.create_window(
-        'Aura Stealth Test',
+        'Shadow Stealth Test',
         html='<h1>This window should be black in screen recordings.</h1>',
         width=800,
         height=600

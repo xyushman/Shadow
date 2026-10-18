@@ -139,21 +139,21 @@ class ScreenshotService {
                 }
                 
                 .queue-btn.clear {
-                    border-color: #f56565;
-                    color: #f56565;
+                    border-color: #e6e6e6;
+                    color: #e6e6e6;
                 }
                 
                 .queue-btn.clear:hover:not(:disabled) {
-                    background: rgba(245, 101, 101, 0.2);
+                    background: rgba(255, 255, 255, 0.2);
                 }
                 
                 .queue-btn.process {
-                    border-color: #48bb78;
-                    color: #48bb78;
+                    border-color: #c1c1c1;
+                    color: #c1c1c1;
                 }
                 
                 .queue-btn.process:hover:not(:disabled) {
-                    background: rgba(72, 187, 120, 0.2);
+                    background: rgba(255, 255, 255, 0.2);
                 }
                 
                 .queue-grid {
@@ -183,7 +183,7 @@ class ScreenshotService {
                 .screenshot-info {
                     padding: 6px;
                     font-size: 9px;
-                    color: #a0aec0;
+                    color: #adadad;
                     text-align: center;
                 }
                 
@@ -193,7 +193,7 @@ class ScreenshotService {
                     right: 4px;
                     width: 16px;
                     height: 16px;
-                    background: rgba(245, 101, 101, 0.9);
+                    background: rgba(50, 50, 50, 0.9);
                     border: none;
                     border-radius: 50%;
                     color: white;
@@ -206,7 +206,7 @@ class ScreenshotService {
                 }
                 
                 .screenshot-remove:hover {
-                    background: #f56565;
+                    background: #3f3f3f;
                     transform: scale(1.1);
                 }
                 
@@ -219,7 +219,7 @@ class ScreenshotService {
                     color: white;
                     padding: 20px 30px;
                     border-radius: 8px;
-                    border: 2px solid #6366f1;
+                    border: 2px solid #d9d9d9;
                     backdrop-filter: blur(15px);
                     z-index: 10000;
                     text-align: center;
@@ -228,13 +228,13 @@ class ScreenshotService {
                 
                 .vision-mode-content h3 {
                     margin: 0 0 10px 0;
-                    color: #6366f1;
+                    color: #d9d9d9;
                     font-size: 18px;
                 }
                 
                 .vision-mode-content p {
                     margin: 0 0 15px 0;
-                    color: #a0aec0;
+                    color: #adadad;
                     font-size: 14px;
                 }
                 
@@ -252,7 +252,7 @@ class ScreenshotService {
                 }
                 
                 .vision-hotkey kbd {
-                    background: #6366f1;
+                    background: #3a3a3a;
                     color: white;
                     padding: 4px 8px;
                     border-radius: 4px;
@@ -262,7 +262,7 @@ class ScreenshotService {
                 
                 .vision-hotkey span {
                     font-size: 10px;
-                    color: #718096;
+                    color: #757575;
                 }
                 
                 @keyframes fadeInScale {
@@ -284,7 +284,7 @@ class ScreenshotService {
                     color: white;
                     padding: 12px 20px;
                     border-radius: 6px;
-                    border-left: 4px solid #48bb78;
+                    border-left: 4px solid #c1c1c1;
                     z-index: 10000;
                     animation: slideInRight 0.3s ease-out;
                     /* Matches the preset and transparency toasts, which are both
@@ -298,15 +298,15 @@ class ScreenshotService {
                    Analysis Failed and Processing Error, and 'warning' for Queue
                    Cleared, but every one of them inherited the success green. */
                 .capture-notification.error {
-                    border-left-color: #f56565;
+                    border-left-color: #e6e6e6;
                 }
 
                 .capture-notification.warning {
-                    border-left-color: #ecc94b;
+                    border-left-color: #8f8f8f;
                 }
 
                 .capture-notification.info {
-                    border-left-color: #6366f1;
+                    border-left-color: #d9d9d9;
                 }
                 
                 @keyframes slideInRight {

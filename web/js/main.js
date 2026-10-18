@@ -297,7 +297,7 @@ function setupDeveloperShortcuts() {
     // Console helper functions
     if (isDev) {
         console.log(`
-🧪 === AURA DEVELOPER TOOLS ===
+🧪 === SHADOW DEVELOPER TOOLS ===
 Available testing functions:
 • testSampleMarkdown() - Test with sample markdown content  
 • testStreamingMarkdown() - Test with comprehensive scenarios
@@ -382,6 +382,23 @@ function setupPresetHotkeys() {
     });
 }
 
+// --- Answer feedback (global hotkeys Alt+G / Alt+B, dispatched from Python) ---
+function submitAnswerFeedback(rating) {
+    const excerpt = (liveInterviewUI.lastAIResponse || '').slice(0, 400);
+    if (!excerpt) {
+        console.log('ℹ️ No AI answer available to rate:', rating);
+        return;
+    }
+    webSocketHandler.sendMessage('answer_feedback', { rating, answer: excerpt });
+    screenshotService.showNotification(
+        '🎯 Answer Feedback Recorded',
+        rating === 'good'
+            ? 'Last answer marked as good — keep this style.'
+            : 'Last answer marked as missed — the coach will adjust.',
+        rating === 'good' ? 'success' : 'warning'
+    );
+}
+
 // --- Global Exports ---
 // Make functions globally accessible for hotkeys and external calls
 window.switchPreset = switchPreset;
@@ -396,6 +413,7 @@ window.toggleMicMute = toggleMicMute;
 window.toggleUniversalMute = toggleUniversalMute;
 window.endInterview = endInterview;
 window.resetInterview = resetInterview;
+window.submitAnswerFeedback = submitAnswerFeedback;
 window.getScreenVideoTrack = getScreenVideoTrack;
 window.isScreenSharingAvailable = isScreenSharingAvailable;
 window.testStreamingMarkdown = testStreamingMarkdown;

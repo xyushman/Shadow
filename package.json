@@ -1,7 +1,7 @@
 {
-  "name": "aura-ai-web",
+  "name": "shadow-web",
   "private": true,
-  "description": "Dev tooling for the Aura web UI. The app itself loads KaTeX from the CDN in web/index.html; keep the version here in sync with it.",
+  "description": "Dev tooling for the Shadow web UI. The app itself loads KaTeX from the CDN in web/index.html; keep the version here in sync with it.",
   "type": "module",
   "scripts": {
     "test": "node --test \"tests/js/*.test.js\""

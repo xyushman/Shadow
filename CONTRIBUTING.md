@@ -1,6 +1,6 @@
-# 🤝 Contributing to Aura
+# 🤝 Contributing to Shadow
 
-First off — **thank you** for wanting to contribute! Every bug report, feature idea, and pull request makes Aura better for everyone.
+First off — **thank you** for wanting to contribute! Every bug report, feature idea, and pull request makes Shadow better for everyone.
 
 ---
 
@@ -8,8 +8,8 @@ First off — **thank you** for wanting to contribute! Every bug report, feature
 
 ```bash
 # 1. Fork & clone
-git clone https://github.com/YOUR_USERNAME/aura.git
-cd aura
+git clone https://github.com/YOUR_USERNAME/Aura-AI.git
+cd Aura-AI
 
 # 2. Create a virtual environment
 python -m venv venv
@@ -73,7 +73,7 @@ python main.py
 ## 📁 Project Structure
 
 ```
-aura/
+Aura-AI/
 ├── main.py                 # App entry point — FastAPI server + pywebview
 ├── window_manager.py       # Stealth mode, hotkeys, Win32 API integration
 ├── api/                    # FastAPI route handlers
@@ -127,4 +127,4 @@ Open a GitHub issue or start a Discussion — we're happy to help!
 
 ---
 
-**⭐ Star the repo if you find Aura useful — it helps more people discover it!**
+**⭐ Star the repo if you find Shadow useful — it helps more people discover it!**

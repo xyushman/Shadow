@@ -34,6 +34,7 @@ class PersistentContextManager:
             'created_at': None
         }
         self.conversation_history = []  # Limited to MAX_CONVERSATION_HISTORY exchanges
+        self.feedback_notes = []        # Candidate's Alt+G/Alt+B ratings of previous answers
         self.is_initialized = False
     
     def initialize_persistent_context(self, onboarding_data: dict):
@@ -106,11 +107,31 @@ class PersistentContextManager:
         
         print(f"✅ AI response added to conversation history (type: {response_type}, total exchanges: {len(self.conversation_history)})")
     
+    def add_answer_feedback(self, rating: str, answer_excerpt: str = ""):
+        """Record the candidate's rating of the last AI answer (Alt+G / Alt+B).
+
+        This closes the ground-truth loop: prompts explicitly carry these
+        lessons forward so future answers adapt instead of drifting.
+        """
+        excerpt = (answer_excerpt or "").strip()
+        if rating == "good":
+            note = ("The candidate rated your LAST answer as GOOD — keep the "
+                    "same depth, structure and tone.")
+        else:
+            note = ("The candidate rated your LAST answer as MISSED/weak — be "
+                    "more accurate and better structured; do not repeat that mistake.")
+        if excerpt:
+            note += f' (Last answer: "{excerpt[:300]}")'
+        self.feedback_notes.append(f"{datetime.now().strftime('%H:%M:%S')} {note}")
+        self.feedback_notes = self.feedback_notes[-5:]  # keep the most recent 5
+        print(f"🎯 Answer feedback recorded ({rating}, {len(self.feedback_notes)} note(s) retained)")
+
     def get_complete_context(self) -> dict:
         """Return complete context - persistent + conversation history"""
         return {
             'persistent': self.persistent_context,
             'conversation_history': self.conversation_history,
+            'feedback_notes': self.feedback_notes,
             'context_stats': {
                 'resume_length': len(self.persistent_context['complete_resume']),
                 'job_desc_length': len(self.persistent_context['complete_job_description']),

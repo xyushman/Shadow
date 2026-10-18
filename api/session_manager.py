@@ -77,6 +77,13 @@ class InterviewSession:
                 "health_status": health_results
             })
             print(f"✅ Session {self.session_id}: Interview started and managers initialized.")
+
+            # Hide-by-default stealth: once the interview is live the Shadow
+            # window leaves the screen entirely (absent from screen shares).
+            # Alt+Z peeks it back for STEALTH_PEEK_SECONDS.
+            import window_manager as _wm
+            if getattr(_wm.window_manager, "stealth_active", False):
+                _wm.window_manager.hide_window()
         except Exception as e:
             print(f"❌ CRITICAL: Session {self.session_id}: Failed to start interview: {e}")
             await self._send_json("error", {"message": f"Failed to initialize AI providers: {str(e)}"})
@@ -138,6 +145,12 @@ class InterviewSession:
                     "error": "No screenshots provided for analysis"
                 })
                 return
+
+            from services.vision_service import dedupe_screenshots
+            total_before = len(screenshots)
+            screenshots = dedupe_screenshots(screenshots)
+            if len(screenshots) < total_before:
+                print(f"♻️ Dropped {total_before - len(screenshots)} duplicate screenshot(s) before analysis")
             
             if not vision_config or not vision_config.get('provider') or not vision_config.get('model'):
                 await self._send_json("vision_analysis_result", {
@@ -159,7 +172,7 @@ class InterviewSession:
             )
             
             await self._send_json("vision_analysis_result", {
-                "success": result_info.get("success", True),
+                "success": result_info.get("success", False),
                 "analysis": analysis,
                 "provider": provider_name,
                 "model": model_name,
@@ -177,11 +190,26 @@ class InterviewSession:
                 "error": f"Vision analysis failed: {str(e)}"
             })
 
+    async def handle_answer_feedback(self, payload: dict):
+        """Candidate rated the last AI answer (Alt+G good / Alt+B missed)."""
+        self._touch()
+        rating = "good" if payload.get("rating") == "good" else "bad"
+        answer = str(payload.get("answer") or "")[:400]
+        print(f"🎯 Session {self.session_id}: Answer feedback = {rating}")
+        context = getattr(self.llm_manager, "shared_context", None) if self.llm_manager else None
+        if context:
+            context.add_answer_feedback(rating, answer)
+        await self._send_json("answer_feedback_ack", {"rating": rating})
+
     async def handle_end_interview(self, payload: dict):
         """Handles the end of an interview."""
         print(f"🛑 Session {self.session_id}: Ending interview.")
         await self.cleanup()
         session_manager.remove_session(self.session_id)
+        # Bring the UI back once the interview (and any screen share) is over.
+        import window_manager as _wm
+        if getattr(_wm.window_manager, "stealth_active", False):
+            _wm.window_manager.show_window()
 
     async def handle_reset_session(self, payload: dict):
         """Handles the reset of a session's context."""
@@ -211,10 +239,12 @@ class InterviewSession:
         vision_service.set_context_manager(self.llm_manager.shared_context)
         await self.llm_manager.perform_health_checks()
 
-        vision_service.load_vision_providers(
+        vision_loaded = vision_service.load_vision_providers(
             primary_config=primary_vision_config,
             secondary_config=secondary_vision_config
         )
+        if not vision_loaded:
+            print(f"⚠️ Session {self.session_id}: No vision providers loaded — screenshots will fail until configured")
 
         user_languages = onboarding_context.get('selectedLanguages', [])
         self.stt_manager = DeepgramManager(self.on_transcript, user_languages)

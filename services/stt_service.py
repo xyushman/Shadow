@@ -192,7 +192,7 @@ class DeepgramManager:
             encoding="linear16",
             channels=1,
             sample_rate=48000,  # Pinned client-side by TARGET_SAMPLE_RATE in web/js/audio_handler.js
-            diarize=False,
+            diarize=True,   # Per-word speaker labels so Q/A attribution isn't guessed
             punctuate=True,
             # Critical speech detection parameters
             utterance_end_ms=1000,    # Wait 1.2 seconds after speech ends to finalize

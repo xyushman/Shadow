@@ -88,7 +88,7 @@ class PresetManager {
                 .preset-label {
                     font-size: 11px;
                     font-weight: 600;
-                    color: #a0aec0;
+                    color: #adadad;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                 }
@@ -97,18 +97,18 @@ class PresetManager {
                     width: 8px;
                     height: 8px;
                     border-radius: 50%;
-                    background: #4a5568;
+                    background: #4a4a4a;
                     transition: background-color 0.3s ease;
                 }
                 
                 .preset-health-dot.healthy {
-                    background: #48bb78;
-                    box-shadow: 0 0 4px rgba(72, 187, 120, 0.4);
+                    background: #c1c1c1;
+                    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
                 }
                 
                 .preset-health-dot.unhealthy {
-                    background: #f56565;
-                    box-shadow: 0 0 4px rgba(245, 101, 101, 0.4);
+                    background: #e6e6e6;
+                    box-shadow: 0 0 4px rgba(255, 255, 255, 0.4);
                 }
                 
                 .preset-details {
@@ -125,7 +125,7 @@ class PresetManager {
                 
                 .preset-provider {
                     font-size: 10px;
-                    color: #718096;
+                    color: #757575;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 }
                 
@@ -137,7 +137,7 @@ class PresetManager {
                 
                 .hotkey-hint {
                     font-size: 9px;
-                    color: #4a5568;
+                    color: #4a4a4a;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 }
                 
@@ -161,19 +161,19 @@ class PresetManager {
                 }
                 
                 .notification-content.success {
-                    border-left: 4px solid #48bb78;
+                    border-left: 4px solid #c1c1c1;
                 }
                 
                 .notification-content.error {
-                    border-left: 4px solid #f56565;
+                    border-left: 4px solid #e6e6e6;
                 }
                 
                 .notification-content.warning {
-                    border-left: 4px solid #ed8936;
+                    border-left: 4px solid #8f8f8f;
                 }
                 
                 .notification-content.info {
-                    border-left: 4px solid #4299e1;
+                    border-left: 4px solid #a3a3a3;
                 }
                 
                 .notification-title {
@@ -188,14 +188,14 @@ class PresetManager {
                 
                 .notification-message {
                     font-size: 12px;
-                    color: #a0aec0;
+                    color: #adadad;
                     margin-bottom: 8px;
                     line-height: 1.4;
                 }
                 
                 .notification-details {
                     font-size: 11px;
-                    color: #718096;
+                    color: #757575;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     background: rgba(255, 255, 255, 0.05);
                     padding: 8px;
@@ -214,22 +214,22 @@ class PresetManager {
                     align-items: center;
                     gap: 4px;
                     font-size: 10px;
-                    color: #718096;
+                    color: #757575;
                 }
                 
                 .health-item .health-dot {
                     width: 6px;
                     height: 6px;
                     border-radius: 50%;
-                    background: #4a5568;
+                    background: #4a4a4a;
                 }
                 
                 .health-item .health-dot.healthy {
-                    background: #48bb78;
+                    background: #c1c1c1;
                 }
                 
                 .health-item .health-dot.unhealthy {
-                    background: #f56565;
+                    background: #e6e6e6;
                 }
                 
                 @keyframes slideInRight {
@@ -244,15 +244,15 @@ class PresetManager {
                 }
                 
                 .preset-primary {
-                    color: #0066ff !important;
+                    color: #d0d0d0 !important;
                 }
                 
                 .preset-secondary {
-                    color: #ff6b35 !important;
+                    color: #8f8f8f !important;
                 }
                 
                 .preset-auto {
-                    color: #6366f1 !important;
+                    color: #d9d9d9 !important;
                 }
             `;
             document.head.appendChild(style);
