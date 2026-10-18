@@ -1,8 +1,5 @@
 # 👻 Shadow — The AI They Can't See, Can't Detect, Can't Stop
 
-<div align="center">
-  <img src="logo.png" alt="Shadow Logo" width="300" />
-</div>
 
 **An invisible AI overlay that lives on your screen — answers questions, solves problems, analyzes screenshots, and feeds you real-time intelligence. Works during interviews, exams, meetings, or anything on your screen. Invisible to screen recordings. Undetectable by proctoring software. You see everything. They see nothing.**
 
@@ -750,10 +747,6 @@ python main.py
 This project is licensed under the **MIT License** — see [LICENSE](LICENSE) for details.
 
 ---
-
-<div align="center">
-
-<img src="logo.png" alt="Shadow AI" width="100" />
 
 ### 🏆 **Shadow: Victory Is Yours**
 
