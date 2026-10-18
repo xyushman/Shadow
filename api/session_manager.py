@@ -82,12 +82,14 @@ class InterviewSession:
             # from screen shares. Retry until actually hidden.
             import window_manager as _wm
             wm = getattr(_wm, "window_manager", None)
-            if wm is not None and getattr(wm, "hwnd", None):
+            # Only hide-by-default mode hides the window on interview start;
+            # Cluely-style (WDA_EXCLUDEFROMCAPTURE) keeps it visible to the user.
+            if wm is not None and getattr(wm, "hwnd", None) and getattr(wm, "stealth_active", False):
                 for _attempt in range(3):
                     try:
                         wm.hide_window()
                     except Exception as _e:
-                        print(f"⚠️ hide_window attempt {_attempt+1} failed: {_e}")
+                        print(f"hide_window attempt {_attempt+1} failed: {_e}")
                     try:
                         import ctypes
                         if not ctypes.windll.user32.IsWindowVisible(wm.hwnd):
@@ -220,7 +222,7 @@ class InterviewSession:
         # Bring the UI back once the interview (and any screen share) is over.
         import window_manager as _wm
         wm = getattr(_wm, "window_manager", None)
-        if wm is not None and getattr(wm, "hwnd", None):
+        if wm is not None and getattr(wm, "hwnd", None) and getattr(wm, "stealth_active", False):
             try:
                 wm.show_window()
             except Exception as _e:
