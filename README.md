@@ -54,7 +54,7 @@ Shadow sits on top of your screen as an **invisible overlay** during live interv
 
 ## 🎥 See Shadow in Action
 
-Real screenshots and recordings from a live Shadow session — no mockups, no staging.
+A quick walkthrough of every setup step — profile, AI models, advanced keys, and hotkeys.
 
 ---
 
@@ -63,20 +63,12 @@ Real screenshots and recordings from a live Shadow session — no mockups, no st
 <details>
 <summary><b>Step 1 · Your Profile — Enter your details and pick an interview focus</b></summary>
 
-<div align="center">
-  <img src="Media/Onboarding-1.png" alt="Shadow Onboarding — Profile Setup" width="750" />
-</div>
-
 Fill in your **name**, **target company**, and **role**, then select your **interview focus** (Behavioral, Coding, System Design, Data Structures, Cultural Fit, or HR/Screening). Paste your full resume and job description for hyper-personalized coaching. Hit the **⚡ Demo** button to auto-fill with sample data for quick testing.
 
 </details>
 
 <details>
 <summary><b>Step 2 · AI Setup — Configure primary, secondary, and vision models</b></summary>
-
-<div align="center">
-  <img src="Media/AI Setup-2.png" alt="Shadow AI Setup — Model Configuration" width="750" />
-</div>
 
 Choose your **Primary AI Model** (default for all responses — Cerebras shown here for maximum speed) and an optional **Secondary Model** (switch anytime with `Alt+W`). Below, configure your **Vision AI Model** for screenshot analysis — Gemini delivers the best accuracy, Groq Llama 4 is the fastest. The **Quick Switch Hotkeys** panel shows `Alt+Q`, `Alt+W`, `Alt+E` for instant model switching mid-interview.
 
@@ -85,20 +77,12 @@ Choose your **Primary AI Model** (default for all responses — Cerebras shown h
 <details>
 <summary><b>Step 3 · Advanced Config — Manage API keys and provider connections</b></summary>
 
-<div align="center">
-  <img src="Media/Config-3.png" alt="Shadow Advanced Config — API Key Management" width="750" />
-</div>
-
 The **Advanced Config** tab is the raw control panel. Enter your **Deepgram API key** (speech-to-text), then manage **multiple API keys per provider** — notice Groq showing 5 keys for maximum rate-limit resilience. Each provider shows its base URL, keys, and a **Test Connection** button to verify everything works before going live. Changes are saved directly to `ai_providers.json` and `.env`.
 
 </details>
 
 <details>
 <summary><b>Step 4 · Commands & Tips — Complete hotkey reference with pro tips</b></summary>
-
-<div align="center">
-  <img src="Media/Commands-4.png" alt="Shadow Commands & Tips — Hotkey Reference" width="750" />
-</div>
 
 The final onboarding tab is your **cheat sheet**. Three highlighted pro-tip cards cover: 🔒 **Stealth Professional Tip** (always use global hotkeys — never click Shadow during proctored exams), 📸 **Multi-Screenshot Analysis** (queue up to 4 screenshots with `Alt+S`, process all at once with `Alt+P`), and ⚡ **Speed Strategy** (use `Alt+E` to auto-select the fastest healthy provider). Below, every hotkey is organized by category with color-coded badges.
 
@@ -108,76 +92,13 @@ The final onboarding tab is your **cheat sheet**. Three highlighted pro-tip card
 
 ### ✅ Pre-Flight Check & Permissions
 
-<table>
-<tr>
-<td width="50%">
-
-<div align="center">
-  <img src="Media/Permissions-5.png" alt="Shadow Pre-Flight — Requesting Microphone Permission" width="370" />
-</div>
-
-**Microphone Permission Request** — Shadow's Pre-Flight Check runs before every session. It validates your microphone access, backend connection, Deepgram API, and all configured AI providers. Grant the mic permission prompt to proceed.
-
-</td>
-<td width="50%">
-
-<div align="center">
-  <img src="Media/permissions-6.png" alt="Shadow Pre-Flight — All Systems Green" width="370" />
-</div>
-
-**All Systems Go ✅** — Every check is green: Microphone Permission OK, Microphone Selected (NVIDIA Broadcast detected), Backend Connected, Deepgram API OK, Primary Cerebras OK, Secondary Groq OK, Primary Vision Gemini OK, Secondary Vision Groq OK. Hit **Start Interview** and you're live.
-
-</td>
-</tr>
-</table>
+Shadow's Pre-Flight Check runs before every session. It validates your microphone access, backend connection, Deepgram API, and every configured AI provider. Grant the mic permission prompt, wait for all checks to turn green, then hit **Start Interview** and you're live.
 
 ---
 
 ### 👻 Stealth Mode in Action
 
-See how Shadow overlays **directly on top of LeetCode** during a live coding session — invisible to screen recordings, fully transparent, and controlled entirely via hotkeys.
-
-<table>
-<tr>
-<td width="50%">
-
-<div align="center">
-  <img src="Media/transparency-8.png" alt="Shadow Stealth — Screen Share Protection" width="370" />
-</div>
-
-**Screen Share Protection** — Shadow runs during a live LeetCode session with "Share Entire Screen" active. The Shadow window overlays the coding environment but is **excluded from the screen capture** via `WDA_EXCLUDEFROMCAPTURE`. Notice the "Microphone Muted" status bar and model switcher visible only to the user.
-
-</td>
-<td width="50%">
-
-<div align="center">
-  <img src="Media/transparency-9 - max trasnparency.png" alt="Shadow Stealth — Maximum Transparency Overlay" width="370" />
-</div>
-
-**Maximum Transparency Mode** — With `Alt+1` (40% opacity), Shadow becomes a near-invisible ghost overlay. The Live Interview Session indicator, MUTED/RESET controls, and AI model badges (`Primary: Cerebras`) are barely visible — just enough for you, completely invisible to anyone observing your screen. The LeetCode problem beneath is fully readable.
-
-</td>
-</tr>
-</table>
-
-<div align="center">
-  <img src="Media/Permissions-7.png" alt="Shadow Stealth — Vision AI Permissions with Screen Share" width="750" />
-</div>
-
-<p align="center"><b>Vision AI + Screen Share</b> — When using Vision AI during a proctored session, Shadow shares your entire screen for screenshot capture. The "Also share system audio" toggle (circled) enables audio capture alongside visual analysis. The Shadow window itself remains hidden from the capture feed — only you see it.</p>
-
----
-
-### 🎬 Video Demos
-
-> **Note:** Click any link below to watch the `.mp4` demo directly. These recordings show actual Shadow features running in real-time.
-
-| Demo | What You'll See | File |
-|:-----|:----------------|:-----|
-| 👻 **Ghost Mode Toggle** | Toggling click-through mode with `Alt+X` — interact with apps underneath Shadow while its overlay stays visible. Shadow becomes a transparent layer you can see but not accidentally click | [▶ easy-toggle-alt+z-12.mp4](Media/easy-toggle-alt+z-%2012.mp4) |
-| 🖱️ **Click Passthrough** | Demonstrating Ghost Mode in practice — clicks pass directly through Shadow's overlay to the application beneath (browser, IDE, exam platform). Zero interference with your workflow | [▶ passthrough-10.mp4](Media/paasthrough-10.mp4) |
-| 🎤 **Real-Time AI Coaching** | Full end-to-end demo: live microphone transcription → AI processing → real-time coaching responses appearing on the overlay. Watch Shadow listen, think, and respond in under 2 seconds | [▶ realtime-working-11.mp4](Media/realtime-working-11.mp4) |
-| 📸 **Vision AI Screenshot** | Capturing a problem with `Alt+S`, processing with `Alt+P`, and receiving AI-generated solutions overlaid on screen. Multi-screenshot queue in action with instant analysis | [▶ screenshot-13.mp4](Media/screenshot-13.mp4) |
+Shadow **auto-hides the moment the interview starts** — while hidden it is completely absent from screen shares and recordings: no content, no black rectangle, nothing. Tap `Alt+Z` for a short click-through peek (auto-hides again after `STEALTH_PEEK_SECONDS`), `Alt+X` to toggle ghost mode, and control everything else via global hotkeys so the interview window never loses focus.
 
 ---
 
