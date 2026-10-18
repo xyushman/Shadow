@@ -93,7 +93,7 @@ class InterviewSession:
             })
             print(f"Session {self.session_id}: Interview started and managers initialized.")
 
-            # Hide-by-default stealth: hide the Shadow window so it is absent
+            # Hide-by-default stealth: hide the Nyx window so it is absent
             # from screen shares. Retry until actually hidden.
             import window_manager as _wm
             wm = getattr(_wm, "window_manager", None)
@@ -111,7 +111,7 @@ class InterviewSession:
                             break
                     except Exception:
                         break
-                print("Shadow hidden for stealth (interview started).")
+                print("Nyx hidden for stealth (interview started).")
         except Exception as e:
             print(f"❌ CRITICAL: Session {self.session_id}: Failed to start interview: {e}")
             await self._send_json("error", {"message": f"Failed to initialize AI providers: {str(e)}"})

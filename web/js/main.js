@@ -487,7 +487,7 @@ function setupDeveloperShortcuts() {
     // Console helper functions
     if (isDev) {
         console.log(`
-🧪 === SHADOW DEVELOPER TOOLS ===
+🧪 === NYX DEVELOPER TOOLS ===
 Available testing functions:
 • testSampleMarkdown() - Test with sample markdown content  
 • testStreamingMarkdown() - Test with comprehensive scenarios

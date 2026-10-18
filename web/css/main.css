@@ -1,4 +1,4 @@
-/* ===== SHADOW — BLACK/GREY/WHITE UI ===== */
+/* ===== NYX — BLACK/GREY/WHITE UI ===== */
 :root {
     /* Core grayscale palette */
     --bg-0: #050505;
@@ -1304,7 +1304,7 @@ select:focus-visible {
 /* ==========================================================================
    Reduced motion
    ==========================================================================
-   Shadow renders as a translucent always-on-top overlay, so looping animation
+   Nyx renders as a translucent always-on-top overlay, so looping animation
    is not just an accessibility concern: movement is the thing that draws a
    viewer's eye to a window that is meant to go unnoticed. Seven animations
    loop forever (recording dot, listening dot, typing carets, spinner,

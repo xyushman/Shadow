@@ -437,7 +437,7 @@ def setup_webview_window():
     """Setup and configure the webview window"""
     # Create the pywebview window, loading the FastAPI server
     window = webview.create_window(
-        'Shadow',
+        'Nyx',
         f'http://127.0.0.1:{uvicorn_server.port}',
         width=1000,
         height=750,
@@ -487,7 +487,7 @@ def setup_webview_window():
                 
             print("ℹ️ Window auto-hides when the interview starts — Alt+Z to peek")
         else:
-            print("⚠️ Could not find Shadow window for window management")
+            print("⚠️ Could not find Nyx window for window management")
         
         # Start the global hotkey listener
         window_manager.window_manager.start_hotkey_listener()
@@ -536,7 +536,7 @@ def enable_dpi_awareness():
 # --- Main Application Entry Point ---
 def main():
     """Main application entry point"""
-    print("🚀 Starting Shadow with corrected asyncio-native architecture...")
+    print("🚀 Starting Nyx with corrected asyncio-native architecture...")
     print("   📋 Architecture: pywebview on main thread, asyncio services in background thread")
     
     try:
