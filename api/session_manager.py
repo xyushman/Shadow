@@ -32,6 +32,11 @@ class InterviewSession:
         self.transcript_buffer: str = ""
         self.silence_timer: Optional[asyncio.Task] = None
         self.last_activity_time: float = time.time()
+        # Native (prompt-free) audio capture. Active only when the backend can
+        # read the mic + WASAPI loopback itself, so the browser never has to
+        # request getDisplayMedia/getUserMedia.
+        self.audio_capture = None
+        self.native_audio_active: bool = False
 
     def _touch(self):
         """Update last activity time."""
@@ -66,8 +71,11 @@ class InterviewSession:
             self.state["is_muted"] = payload.get('is_muted', False)
             self.state["process_all_speakers"] = payload.get('process_all_speakers', True)
             self.state["is_universally_muted"] = payload.get('is_universally_muted', False)
+            native_index = payload.get('nativeMicIndex')
+            self.state["native_mic_index"] = int(native_index) if native_index is not None else None
 
             await self.initialize_managers(primary_provider_config, secondary_provider_config, primary_vision_config, secondary_vision_config, onboarding_context)
+            await self._start_native_audio()
             
             current_preset = self.llm_manager.get_current_preset_info()
             health_results = await self.llm_manager.perform_health_checks()
@@ -102,8 +110,11 @@ class InterviewSession:
             await self._send_json("error", {"message": f"Failed to initialize AI providers: {str(e)}"})
 
     async def handle_audio_chunk(self, payload: dict):
-        """Handles incoming audio chunks."""
+        """Handles incoming audio chunks. Only used when native capture is off."""
         self._touch()
+        if self.native_audio_active:
+            # Backend is already feeding Deepgram directly; drop the browser copy.
+            return
         if self.stt_manager and not self.state.get("is_universally_muted", False):
             encoded = payload.get('audio_b64')
             if encoded:
@@ -126,6 +137,8 @@ class InterviewSession:
             self.state["process_all_speakers"] = payload['processAllSpeakers']
         if 'isUniversallyMuted' in payload:
             self.state["is_universally_muted"] = payload['isUniversallyMuted']
+        if 'isMicMuted' in payload:
+            self.state["is_muted"] = payload['isMicMuted']
         await self._send_json("config_updated", self.state)
 
     async def handle_switch_preset(self, payload: dict):
@@ -326,8 +339,54 @@ class InterviewSession:
             if self.llm_manager:
                 self.llm_manager.process_candidate_response(transcript)
 
+    async def _start_native_audio(self):
+        """Starts backend mic + loopback capture so the browser stays prompt-free.
+
+        Falls back silently to the browser capture path when native capture is
+        unavailable; the client tells the user which path is live.
+        """
+        if not self.stt_manager:
+            return
+        try:
+            from services.audio_capture import NativeAudioCapture
+            stt = self.stt_manager
+            loop = asyncio.get_running_loop()
+            capture = NativeAudioCapture(
+                send_audio=stt.send_audio,
+                get_state=lambda: self.state,
+                loop=loop,
+            )
+            capture.start(mic_index=self.state.get("native_mic_index"))
+        except Exception as exc:
+            self.audio_capture = None
+            self.native_audio_active = False
+            print(f"⚠️ Session {self.session_id}: native audio unavailable, "
+                  f"falling back to browser capture: {exc}")
+            await self._send_json("native_audio_status", {
+                "active": False,
+                "reason": str(exc),
+            })
+            return
+        self.audio_capture = capture
+        self.native_audio_active = True
+        await self._send_json("native_audio_status", {
+            "active": True,
+            "reason": "mic + system loopback captured natively (no permission prompts)",
+        })
+        print(f"Session {self.session_id}: native audio capture active.")
+
+    def _stop_native_audio(self):
+        if self.audio_capture is not None:
+            try:
+                self.audio_capture.stop()
+            except Exception as exc:
+                print(f"⚠️ Session {self.session_id}: audio capture stop failed: {exc}")
+        self.audio_capture = None
+        self.native_audio_active = False
+
     async def cleanup(self):
         """Cleans up resources for the session."""
+        self._stop_native_audio()
         if self.stt_manager:
             await self.stt_manager.finish()
         if self.silence_timer and not self.silence_timer.done():

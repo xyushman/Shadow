@@ -176,8 +176,27 @@ export class WebSocketHandler {
             case 'answer_feedback_ack':
                 devLog('✅ Answer feedback acknowledged:', data.payload?.rating);
                 break;
+            case 'native_audio_status':
+                this.handleNativeAudioStatus(data.payload);
+                break;
             default:
                 console.warn('Unknown message type:', data.type);
+        }
+    }
+
+    handleNativeAudioStatus(payload) {
+        if (payload?.active) {
+            devLog('🎙️ Native audio capture active - no permission prompts needed.');
+            return;
+        }
+        // Backend could not open the devices: fall back to the browser path so
+        // the interview still captures audio (this is when prompts appear).
+        console.warn('⚠️ Native audio unavailable, using browser capture:', payload?.reason);
+        if (typeof window.__startBrowserAudioFallback === 'function') {
+            import('./audio_handler.js')
+                .then(m => m.enableBrowserFallback())
+                .then(() => window.__startBrowserAudioFallback())
+                .catch(err => console.error('Browser audio fallback failed:', err));
         }
     }
 
@@ -342,6 +361,8 @@ export class WebSocketHandler {
             is_muted: initialMuteStatus.microphone,
             is_universally_muted: initialMuteStatus.universal,
             process_all_speakers: true,
+            // Which backend input device native capture should open (null = default).
+            nativeMicIndex: this.nativeMicIndex ?? null,
             aiSecondaryProvider: state.selectedSecondaryProvider.name ? {
                 provider: state.selectedSecondaryProvider.name,
                 model: state.selectedSecondaryProvider.model
