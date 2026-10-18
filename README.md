@@ -98,7 +98,7 @@ Shadow's Pre-Flight Check runs before every session. It validates your microphon
 
 ### 👻 Stealth Mode in Action
 
-Shadow **auto-hides the moment the interview starts** — while hidden it is completely absent from screen shares and recordings: no content, no black rectangle, nothing. Tap `Alt+Z` for a short click-through peek (auto-hides again after `STEALTH_PEEK_SECONDS`), `Alt+X` to toggle ghost mode, and control everything else via global hotkeys so the interview window never loses focus.
+Shadow stays **visible to you** but is **excluded from screen capture entirely** — no black rectangle, no content leak. Uses Windows `WDA_EXCLUDEFROMCAPTURE` so the window is invisible in Zoom, Teams, Meet, OBS, and browser screen-share while remaining fully usable on your monitor. Toggle click-through ghost mode with `Alt+X`; control everything else via global hotkeys so the interview window never loses focus.
 
 ---
 
