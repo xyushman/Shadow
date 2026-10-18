@@ -319,6 +319,7 @@ class WindowManager:
         self._last_scroll_activity = 0.0       # monotonic stamp of last scroll hotkey repeat
         self._native_title_scrubbed = False    # native title blanked while hidden
         self._hidden_native_title = ""         # original title to restore on show
+        self._pre_hide_rect = None             # window rect before hiding, for restore
         
         # Continuous scrolling state
         self.scrolling_up = False
@@ -1018,21 +1019,29 @@ class WindowManager:
             return False
         self._cancel_peek_timer()
         was_visible = bool(_user32.IsWindowVisible(self.hwnd))
+        # Remember where the window was so we can bring it back (only when visible).
+        if was_visible:
+            try:
+                r = wintypes.RECT()
+                if _user32.GetWindowRect(self.hwnd, ctypes.byref(r)):
+                    self._pre_hide_rect = (r.left, r.top, r.right - r.left, r.bottom - r.top)
+            except Exception:
+                pass
         for _ in range(3):
             _user32.ShowWindow(self.hwnd, SW_HIDE)
             time.sleep(0.05)
             if not _user32.IsWindowVisible(self.hwnd):
                 break
+        # Off-screen fallback only if still visible.
         try:
-            # Push the window far off-screen as a fallback in case SW_HIDE is
-            # ignored by the host framework. Keep its size (SWP_NOSIZE).
-            _user32.SetWindowPos(self.hwnd, None, -32000, -32000, 0, 0, 0x0001 | 0x0010)
+            if _user32.IsWindowVisible(self.hwnd):
+                _user32.SetWindowPos(self.hwnd, None, -32000, -32000, 0, 0, 0x0001 | 0x0010)
         except Exception:
             pass
         self.set_ghost_mode(False)
         self._scrub_title()
         if was_visible:
-            print("🕵️ Window hidden (stealth) — press Alt+Z to peek.")
+            print("Window hidden (stealth) - press Alt+Z to peek.")
         return True
 
     def show_window(self) -> bool:
@@ -1040,11 +1049,18 @@ class WindowManager:
         if not self.is_windows or not self.hwnd:
             return False
         self._cancel_peek_timer()
+        # Restore original on-screen position if we moved it off-screen.
+        try:
+            rect = getattr(self, "_pre_hide_rect", None)
+            if rect:
+                _user32.SetWindowPos(self.hwnd, None, rect[0], rect[1], rect[2], rect[3], 0x0010 | 0x0004)
+        except Exception:
+            pass
         _user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
         self._restore_title()
         self.set_ghost_mode(False)  # interactive again once the interview is over
         self.set_always_on_top(True)
-        print("✨ Window shown (no auto-hide) — Alt+Z hides it again.")
+        print("Window shown (no auto-hide) - Alt+Z hides it again.")
         return True
 
     def toggle_visibility(self):
@@ -1060,8 +1076,14 @@ class WindowManager:
             self._scrub_title()
             print("🕵️‍ Window hidden via global hotkey.")
         else:
+            # Restore on-screen position if we moved it off-screen.
+            try:
+                rect = getattr(self, "_pre_hide_rect", None)
+                if rect:
+                    _user32.SetWindowPos(self.hwnd, None, rect[0], rect[1], rect[2], rect[3], 0x0010 | 0x0004)
+            except Exception:
+                pass
             # Use SW_SHOWNOACTIVATE to show window without giving it focus
-            # This prevents proctoring software from detecting focus changes
             _user32.ShowWindow(self.hwnd, SW_SHOWNOACTIVATE)
             self._restore_title()
             # Click-through while peeking: any click falls through to the app
