@@ -5,9 +5,7 @@ import { ProviderManager } from './provider-manager.js';
 import {
     setupMicrophone,
     startAudioProcessing,
-    stopAudioProcessing,
-    getScreenVideoTrack,
-    isScreenSharingAvailable
+    stopAudioProcessing
 } from './audio_handler.js';
 import muteManager from './mute-manager.js';
 import { autofillForTesting } from './dev.js';
@@ -414,8 +412,6 @@ window.toggleUniversalMute = toggleUniversalMute;
 window.endInterview = endInterview;
 window.resetInterview = resetInterview;
 window.submitAnswerFeedback = submitAnswerFeedback;
-window.getScreenVideoTrack = getScreenVideoTrack;
-window.isScreenSharingAvailable = isScreenSharingAvailable;
 window.testStreamingMarkdown = testStreamingMarkdown;
 window.testSampleMarkdown = testSampleMarkdown;
 
