@@ -1,254 +1,120 @@
-# 🕵️ Proctoring Stealth Guide - Undetectable AI Assistant Usage
+# Stealth Mode Guide
 
-> **⚠️ Legacy guide:** The transparency/`WDA_EXCLUDEFROMCAPTURE` instructions below predate the current **hide-by-default stealth** mode (window fully hidden during sessions, `Alt+Z` click-through peeks that auto-hide). Prefer the behavior described in the README; the detection guidance in this document still applies.
+> **Note:** Parts of this document predate the current hide-by-default stealth
+> mode, in which the window is fully hidden during a session and `Alt+Z` produces
+> a click-through peek that auto-hides. Prefer the behavior described in the
+> [README](README.md) for current defaults. The guidance on focus discipline and
+> window control below still applies.
 
-This guide explains how to use your AI assistant application completely undetectably during proctored exams, interviews, or monitored sessions.
+## Overview
 
-## 🎯 How Proctoring Software Detects Cheating
+Nyx is designed to be operated entirely through global hotkeys, without the
+overlay window ever taking focus. This guide explains how the stealth features
+work and how to operate the overlay during a monitored or recorded session.
 
-Proctoring platforms like **Proctorio**, **Honorlock**, **ExamSoft**, **Respondus**, and others detect:
+## Stealth features
 
-1. **Focus Changes** - When you click on other windows or applications
-2. **Tab Switching** - Moving between browser tabs  
-3. **Screen Recording** - Capturing what's displayed on your screen
-4. **Window Detection** - Finding suspicious application windows
-5. **Mouse Movement** - Tracking cursor position and clicks
+### Focus-free visibility
 
-## 🛡️ Our Stealth Countermeasures
+The window is shown and hidden with `SW_SHOWNOACTIVATE` rather than `SW_SHOW`.
+This shows the window without activating it, so showing or hiding the overlay
+does not change which window has focus.
 
-### 1. Ghost Mode (Click-Through)
-- Window becomes **completely click-through**
-- Cannot accidentally gain focus by clicking
-- Prevents focus change detection
+### Click-through ghost mode (`Alt+X`)
 
-### 2. Focus-Free Visibility  
-- Window shows/hides **without ever gaining focus**
-- Uses `SW_SHOWNOACTIVATE` instead of `SW_SHOW`
-- Proctoring software never detects window activation
+Ghost mode applies `WS_EX_TRANSPARENT` (combined with `WS_EX_LAYERED`) so clicks
+pass through the overlay to the window underneath. The overlay cannot
+accidentally gain focus by being clicked while ghost mode is active.
 
-### 3. Screen Capture Protection
-- Window appears as **black rectangle** in recordings
-- Uses Windows `WDA_EXCLUDEFROMCAPTURE` API
-- Invisible to screen sharing and recording software
+### Screen-capture exclusion
 
-### 4. Global Hotkey Control
-- **System-wide shortcuts** work from any application
-- No need to click or focus the AI window
-- All interaction via keyboard only
+The window uses the Windows `WDA_EXCLUDEFROMCAPTURE` API, so it does not appear
+in screen recordings or shared screens (OBS, Camtasia, Teams, Zoom, and capture
+APIs that honor display affinity).
 
-## 🚀 Step-by-Step Stealth Setup
+### Global hotkeys
 
-### Initial Setup
-1. **Launch silently**: Use `silent_run.vbs` to start without visible console
-2. **Enable stealth mode**: Press `Alt+Shift+S` to activate proctoring stealth mode
-3. **Verify setup**: Window should be semi-transparent, click-through, and always on top
+All actions are available through system-wide hotkeys that work from any
+application. No clicking or focusing of the overlay is required. See the
+[hotkey table](README.md#hotkeys) in the README for the full list.
 
-### During Proctored Sessions
+## Operating during a session
 
-#### ✅ SAFE Actions (Undetectable)
-- `Alt+Z` - Show/hide window (no focus change)
-- `Alt+Left/Right` - Move window horizontally **[20px increments]**
-- `Alt+I` / `Alt+J` - Move window up / down **[20px increments]**
-- `Alt+Up/Down` - Scroll window content (hold for continuous)
-- `Alt+R` - Reset screenshot queue (safe internal function)
-- `Alt+O` - Reset interview session (safe internal function)
-- `Alt+1/2/3` - Adjust transparency (40%/70%/100%)
-- `Alt+V` - Toggle vision mode
-- `Alt+S` - Capture screenshot
-- `Alt+P` - Process screenshots with AI
-- `Alt+T` - Switch vision model
-- `Alt+Q/W/E` - Switch primary / secondary / auto-select AI
-- `Alt+M` - Toggle microphone mute
-- `Alt+U` - Toggle universal mute (pause)
-- All other global hotkeys listed below
+### Do
 
-#### ⚠️ CAUTION Actions (Use Carefully)
-- `Alt+X` - Toggle ghost mode (DANGEROUS if accidentally disabled during session)
+- Keep the monitored application in focus at all times.
+- Use global hotkeys exclusively to control the overlay.
+- Use `Alt+Z` to show or hide the overlay as needed.
+- Reposition the window with `Alt+Left/Right` and `Alt+I/J` (20px per press).
+- Scroll content with `Alt+Up/Down` (hold for continuous scrolling).
+- Use `Alt+1` for the lowest opacity when you want the overlay least visible.
 
-#### ❌ DANGEROUS Actions (Will Be Detected)
-- **Never click on the AI window** - This gives it focus
-- **Never drag or resize the window** - Creates focus events
-- **Never use Alt+Tab** to switch to the AI window
-- **Never maximize/minimize** the AI window manually
-- **AVOID Alt+X during sessions** - Can accidentally disable ghost mode and make window clickable
+### Avoid
 
-## 🎮 Complete Hotkey Reference
+- Clicking on the overlay window.
+- Dragging, resizing, minimizing, or maximizing it with the mouse.
+- Using `Alt+Tab` to switch to the overlay.
+- Pressing `Alt+X` unintentionally during a session, which would disable ghost
+  mode and make the window clickable again.
 
-### Window Management
-- `Alt+Shift+S` - **Enable proctoring stealth mode** (one-time setup)
-- `Alt+Z` - Toggle visibility (stealth - no focus change)
-- `Alt+X` - Toggle ghost mode (click-through)
-- `Alt+Left` / `Alt+Right` - Move window left / right (stealth, 20px)
-- `Alt+I` - Move window up (stealth, 20px)
-- `Alt+J` - Move window down (stealth, 20px)
+## Window control reference
 
-### Scrolling
-- `Alt+Up` - Continuous scroll up (hold to keep scrolling, release to stop)
-- `Alt+Down` - Continuous scroll down (hold to keep scrolling, release to stop)
+Window and transparency:
 
-### Transparency Control  
-- `Alt+1` - Transparent (40% opacity) - best for exams
-- `Alt+2` - Semi-transparent (70% opacity) - balanced
-- `Alt+3` - Opaque (100% opacity) - full visibility
+- `Alt+Shift+S`: enable stealth mode.
+- `Alt+Z`: toggle visibility (no focus change).
+- `Alt+X`: toggle ghost mode (click-through).
+- `Alt+Left` / `Alt+Right`: move left / right (20px).
+- `Alt+I` / `Alt+J`: move up / down (20px).
+- `Alt+1` / `Alt+2` / `Alt+3`: set opacity to 40% / 70% / 100%.
 
-### AI Features
-- `Alt+Q` - Switch to primary AI preset
-- `Alt+W` - Switch to secondary AI preset
-- `Alt+E` - Auto-select best AI preset
-- `Alt+V` - Toggle vision mode
-- `Alt+S` - Capture screenshot
-- `Alt+P` - Process screenshots with AI
-- `Alt+R` - Reset screenshot queue
-- `Alt+O` - **Reset interview session** (stealth)
-- `Alt+T` - Switch vision model
+Scrolling:
 
-### Audio Control
-- `Alt+M` - Toggle microphone mute
-- `Alt+U` - Toggle universal mute (pause)
+- `Alt+Up` / `Alt+Down`: continuous scroll up / down while held.
 
-## 🎯 Proctoring Session Workflow
+See the README for AI, vision, and audio hotkeys.
 
-### Before the Session
-1. Start application with `silent_run.vbs`
-2. Press `Alt+Shift+S` to enable proctoring stealth mode
-3. Test all hotkeys to ensure they work
-4. Position window in a corner at 40% transparency (`Alt+1`)
+## Technical details
 
-### During the Session
-1. **Keep the proctored application in focus at all times**
-2. Use only global hotkeys to interact with AI assistant
-3. **Never click on the AI window** - it's click-through anyway
-4. Use `Alt+Z` to show/hide as needed
-5. Use `Alt+Left/Right` and `Alt+I/J` to reposition window
-6. Use `Alt+Up/Down` to scroll content without clicking
-7. Use `Alt+1` for maximum stealth (40% transparency)
+| Feature | Implementation |
+|---|---|
+| Focus-free show | `SW_SHOWNOACTIVATE` (shows without activation) instead of `SW_SHOW` |
+| Ghost mode | `WS_EX_TRANSPARENT` plus `WS_EX_LAYERED` for click-through and transparency |
+| Capture exclusion | `WDA_EXCLUDEFROMCAPTURE` excludes the window from screen capture |
+| Taskbar/Alt+Tab | `WS_EX_TOOLWINDOW` keeps the window out of the taskbar and switcher |
 
-### Emergency Hide
-- `Alt+Z` - Instantly hide window without focus change
-- Window remains ready for immediate recall
+## Testing your setup
 
-## 🔧 Technical Details
+Before a session where this matters:
 
-### Focus-Free Technology
-```
-SW_SHOWNOACTIVATE (4) - Shows window without activation
-vs
-SW_SHOW (5) - Shows window and gives it focus (DANGEROUS)
-```
+1. Confirm every hotkey responds.
+2. Verify the opacity levels with `Alt+1/2/3`.
+3. Confirm ghost mode is active (`Alt+X`) and that clicks pass through.
+4. Record your screen to confirm the overlay is excluded from capture.
+5. Rehearse the workflow so you can operate it without looking away.
 
-### Ghost Mode Implementation  
-```
-WS_EX_TRANSPARENT - Makes window click-through
-Combined with WS_EX_LAYERED for transparency
-Always-on-top positioning without focus
-```
+## Troubleshooting
 
-### Screen Capture Protection
-```
-WDA_EXCLUDEFROMCAPTURE - Excludes from all capture methods
-- Screen recording software (OBS, Camtasia, etc.)
-- Screen sharing (Teams, Zoom, etc.)  
-- Screenshots and screen capture APIs
-```
+**Hotkeys not working**
 
-## 🚨 Important Warnings
+- Restart the application.
+- Ensure no other software has registered the same global hotkeys.
 
-### ⚠️ CRITICAL: Alt+X Safety Warning
-**Alt+X toggles ghost mode on/off**. During proctoring sessions:
-- If you accidentally press Alt+X, you could **disable ghost mode**
-- This makes the window **clickable again** and creates risk of accidental focus
-- **Only use Alt+X during setup phase** before proctoring begins
-- **If accidentally pressed during session**: Press Alt+X again immediately to re-enable ghost mode
+**Window gaining focus**
 
-### DO NOT:
-- Click anywhere on the AI window
-- Use mouse to interact with the AI interface
-- Drag, resize, or manually manipulate the window
-- Use Alt+Tab to switch to the AI window
-- Focus the AI window in any way
-- **Press Alt+X accidentally during proctoring** - Can disable ghost mode and make window clickable
+- Use `Alt+Z` rather than clicking to show or hide.
+- Confirm ghost mode is enabled with `Alt+X`.
 
-### ALWAYS:
-- Use global hotkeys exclusively
-- Keep proctored application in focus
-- Test hotkeys before important sessions
-- Use 40% transparency for maximum stealth
-- Launch via `silent_run.vbs` for complete silence
+**Visible in recordings**
 
-## 🎓 Pro Tips
+- Confirm the capture-exclusion API applied at startup.
+- Restart the application if it did not.
+- Lower the opacity as a fallback.
 
-### For Different Scenarios
+## Responsible use
 
-#### Online Exams
-- Use 40% transparency (`Alt+1`)
-- Position in bottom corner
-- Use vision mode for question analysis
-- Capture screenshots of questions with `Alt+S`
-
-#### Video Interviews  
-- Use 70% transparency (`Alt+2`)
-- Position off to the side
-- Keep mostly hidden (`Alt+Z`)
-- Use for research between questions
-
-#### Monitored Work Sessions
-- Use ghost mode constantly (`Alt+X`)
-- Quick show/hide with `Alt+Z`
-- Adjust transparency based on lighting
-
-### Optimal Positioning
-- **Bottom right corner** - least likely to obstruct content
-- **Semi-transparent** - visible but not obvious
-- **Small size** - minimally intrusive
-- **Always on top** - accessible when needed
-
-### Stealth Window Movement
-- Use `Alt+Left/Right` - Move horizontally (20px per press)
-- Use `Alt+I` - Move window up (20px per press)
-- Use `Alt+J` - Move window down (20px per press)
-- **No focus change** - Window moves without activation
-- **Perfect for repositioning** during sessions without detection
-
-### Stealth Content Scrolling
-- Use `Alt+Up` - Scroll content up (hold for continuous)
-- Use `Alt+Down` - Scroll content down (hold for continuous)
-- **No focus change** - Content scrolls without activating window
-- **Hold and release** - Scrolling continues while held, stops on release
-
-## 🔍 Testing Your Setup
-
-Before any important session:
-
-1. **Test all hotkeys** - Ensure they respond correctly
-2. **Check transparency** - Verify opacity levels work
-3. **Test ghost mode** - Confirm click-through behavior  
-4. **Verify capture protection** - Record screen to confirm black rectangle
-5. **Practice workflow** - Rehearse typical usage patterns
-
-## 🛠️ Troubleshooting
-
-### Hotkeys Not Working
-- Restart application
-- Check if window handle is properly set
-- Ensure no other software is blocking global hotkeys
-
-### Window Gaining Focus
-- Verify you're using `Alt+Z` not clicking
-- Check if ghost mode is enabled (`Alt+X`)
-- Restart application and re-enable stealth mode
-
-### Visible in Recordings
-- Check if screen capture protection applied correctly
-- Restart application if protection failed
-- Use higher transparency as backup
-
-## 🎯 Success Metrics
-
-A properly configured stealth setup will:
-- ✅ Never appear in screen recordings (black rectangle)
-- ✅ Never trigger focus change detection
-- ✅ Remain accessible via global hotkeys
-- ✅ Stay visually subtle and unobtrusive
-- ✅ Work without any mouse interaction
-
-Remember: The key to undetectable usage is **never giving the AI window focus**. Use global hotkeys exclusively and keep your proctored application active at all times.
+Stealth Mode is provided to support your own work and study. It is your
+responsibility to comply with the laws, regulations, and policies that apply to
+you, and to review the rules of any exam or interview provider before use. Use
+Nyx to augment your own knowledge and preparation, not to misrepresent your
+abilities.

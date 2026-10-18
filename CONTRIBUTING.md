@@ -1,13 +1,11 @@
-# 🤝 Contributing to Nyx
+# Contributing to Nyx
 
-First off — **thank you** for wanting to contribute! Every bug report, feature idea, and pull request makes Nyx better for everyone.
+Thanks for your interest in contributing.
 
----
-
-## 🚀 Quick Start
+## Quick start
 
 ```bash
-# 1. Fork & clone
+# 1. Fork and clone
 git clone https://github.com/YOUR_USERNAME/Aura-AI.git
 cd Aura-AI
 
@@ -19,8 +17,8 @@ venv\Scripts\activate
 pip install -r requirements.txt
 
 # 4. Copy config templates
-cp .env.example .env
-cp ai_providers.example.json ai_providers.json
+copy .env.example .env
+copy ai_providers.example.json ai_providers.json
 
 # 5. Add your API keys to .env and ai_providers.json
 
@@ -28,103 +26,92 @@ cp ai_providers.example.json ai_providers.json
 python main.py
 ```
 
----
+## How to contribute
 
-## 📋 How to Contribute
+### Reporting a bug
 
-### 🐛 Found a Bug?
-
-1. **Search existing issues** first to avoid duplicates
-2. Open a new issue with:
-   - Clear, descriptive title
+1. Search existing issues first to avoid duplicates.
+2. Open an issue with:
+   - A descriptive title
    - Steps to reproduce
-   - Expected vs actual behavior
-   - Terminal/console output (if applicable)
-   - Your OS version and Python version
+   - Expected and actual behavior
+   - Terminal or console output
+   - Your OS and Python version
 
-### 💡 Have a Feature Idea?
+### Requesting a feature
 
-1. Open an issue with the **`feature request`** label
-2. Describe:
-   - The use case — what problem does it solve?
-   - Your proposed solution
-   - Any alternatives you've considered
+Open an issue describing the use case, your proposed solution, and any
+alternatives you considered.
 
-### 🔧 Want to Submit a PR?
+### Submitting a pull request
 
-1. **Fork** the repository
-2. **Create a branch** from `main`:
+1. Fork the repository.
+2. Create a branch from `main`:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
-3. **Make your changes** — keep commits focused and atomic
-4. **Test** your changes locally. For changes to the web UI's markdown or math rendering, run the JS tests (needs Node 20+):
+
+3. Make your changes with focused, atomic commits.
+4. Test your changes locally. For changes to the web UI's markdown or math
+   rendering, run the JavaScript tests (Node 20+):
+
    ```bash
    npm install
    npm test
    ```
-5. **Push** and open a Pull Request:
+
+   Run the Python tests with:
+
    ```bash
-   git push origin feature/your-feature-name
+   venv\Scripts\python.exe -m unittest discover -s tests/python
    ```
 
----
+5. Push the branch and open a pull request.
 
-## 📁 Project Structure
+## Project structure
 
 ```
 Aura-AI/
-├── main.py                 # App entry point — FastAPI server + pywebview
-├── window_manager.py       # Stealth mode, hotkeys, Win32 API integration
+├── main.py                 # App entry point: FastAPI server + pywebview
+├── window_manager.py       # Stealth mode, hotkeys, Win32 integration
 ├── api/                    # FastAPI route handlers
-├── core/                   # Core business logic and config
+├── core/                   # Core logic and configuration
 ├── services/               # AI providers, Deepgram, vision processing
-├── web/                    # Frontend — HTML/CSS/JS served by pywebview
-├── .env                    # Environment variables (secrets — not committed)
-├── ai_providers.json       # AI provider config (secrets — not committed)
-├── run.bat                 # Automated setup & launch script
+├── web/                    # Frontend: HTML/CSS/JS served by pywebview
+├── tests/                  # Python and JavaScript tests
+├── .env                    # Environment variables (not committed)
+├── ai_providers.json       # AI provider config (not committed)
+├── run.bat                 # Automated setup and launch script
 └── silent_run.vbs          # Invisible launch (no terminal window)
 ```
 
----
-
-## 🎯 Areas We Need Help With
+## Areas that need help
 
 | Area | Description |
-|:-----|:------------|
-| 🐧 **Linux Support** | Port Win32 stealth APIs to X11/Wayland equivalents |
-| 🍎 **macOS Support** | Port Win32 stealth APIs to Cocoa/AppKit |
-| 🌐 **More AI Providers** | Add support for new LLM providers (Anthropic, Mistral, etc.) |
-| 🎨 **UI/UX** | Improve the overlay interface, themes, animations |
-| 📝 **Documentation** | Better setup guides, tutorials, video walkthroughs |
-| 🧪 **Testing** | Unit tests, integration tests, CI/CD pipeline |
-| 🌍 **Localization** | Multi-language support for the UI |
+|---|---|
+| Linux support | Port the Win32 stealth APIs to X11/Wayland equivalents |
+| macOS support | Port the Win32 stealth APIs to Cocoa/AppKit |
+| AI providers | Add support for additional LLM providers |
+| UI/UX | Improve the overlay interface and theming |
+| Documentation | Setup guides and tutorials |
+| Testing | Unit tests, integration tests, CI |
+| Localization | Multi-language support for the UI |
 
----
+## Code style
 
-## 📐 Code Style
+- **Python**: follow PEP 8.
+- **JavaScript**: vanilla JS, no frameworks in the frontend.
+- **CSS**: vanilla CSS, no preprocessors.
+- **Naming**: snake_case for Python, camelCase for JavaScript.
+- **Comments**: explain why, not what.
 
-- **Python**: Follow PEP 8 conventions
-- **JavaScript**: Use vanilla JS (no frameworks in the frontend)
-- **CSS**: Vanilla CSS — no Tailwind or preprocessors
-- **Naming**: Descriptive variable/function names, snake_case for Python, camelCase for JS
-- **Comments**: Explain *why*, not *what* — code should be self-documenting
+## Notes
 
----
+- Never commit secrets. `.env` and `ai_providers.json` are git-ignored.
+- Test stealth features on Windows 10/11 before submitting stealth-related PRs.
+- Keep pull requests focused: one feature or fix per PR.
 
-## ⚠️ Important Notes
+## Questions
 
-- **Never commit secrets** — `.env` and `ai_providers.json` are in `.gitignore` for a reason
-- **Test stealth features** on Windows 10/11 before submitting stealth-related PRs
-- **Keep PRs focused** — one feature or fix per PR
-- **Be respectful** — we're all here to build something awesome
-
----
-
-## 💬 Questions?
-
-Open a GitHub issue or start a Discussion — we're happy to help!
-
----
-
-**⭐ Star the repo if you find Nyx useful — it helps more people discover it!**
+Open a GitHub issue or start a discussion.
