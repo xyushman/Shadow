@@ -37,6 +37,14 @@ class MuteManager {
         devLog(`🎤 Microphone mute state changed to: ${isMuted}`);
         this.emit('microphoneMuteChange', this._isMicrophoneMuted);
         this.emit('stateChange', this.getMuteStatus());
+
+        // In native audio mode the backend is capturing, so it needs the mute
+        // state directly instead of reading it from each audio chunk's payload.
+        if (typeof window.sendSocketMessage === 'function') {
+            window.sendSocketMessage('config_update', {
+                isMicMuted: this._isMicrophoneMuted
+            });
+        }
     }
 
     toggleMicrophoneMute() {

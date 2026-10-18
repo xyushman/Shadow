@@ -5,7 +5,8 @@ import { ProviderManager } from './provider-manager.js';
 import {
     setupMicrophone,
     startAudioProcessing,
-    stopAudioProcessing
+    stopAudioProcessing,
+    isNativeAudioMode
 } from './audio_handler.js';
 import muteManager from './mute-manager.js';
 import { autofillForTesting } from './dev.js';
@@ -105,8 +106,15 @@ async function runPreFlightChecks() {
     providerManager.webSocketHandler.updateCheckStatus(micPermissionCheck, 'pending', 'Requesting Microphone...');
     const micPermission = await setupMicrophone();
     if (micPermission) {
-        providerManager.webSocketHandler.updateCheckStatus(micPermissionCheck, 'success', 'Microphone Permission OK');
-        providerManager.webSocketHandler.updateCheckStatus(micSelectionCheck, 'success', 'Microphone Selection Ready');
+        const native = isNativeAudioMode();
+        providerManager.webSocketHandler.updateCheckStatus(
+            micPermissionCheck, 'success',
+            native ? 'Native Audio Ready (No Prompt)' : 'Microphone Permission OK'
+        );
+        providerManager.webSocketHandler.updateCheckStatus(
+            micSelectionCheck, 'success',
+            native ? 'System Devices Detected' : 'Microphone Selection Ready'
+        );
     } else {
         providerManager.webSocketHandler.updateCheckStatus(micPermissionCheck, 'error', 'Microphone Permission Denied');
         providerManager.webSocketHandler.updateCheckStatus(micSelectionCheck, 'error', 'Microphone Selection Failed');
@@ -149,6 +157,12 @@ async function startInterview() {
     const onAudioData = (audioData, speakerHint) => {
         webSocketHandler.sendAudioChunk(audioData, muteManager.isMicrophoneMuted());
     };
+    // Held so the backend's native_audio_status reply can start the browser
+    // path if native capture turns out to be unavailable at interview start.
+    window.__startBrowserAudioFallback = async () => {
+        const ok = await startAudioProcessing(micSelect.value, onAudioData);
+        return ok;
+    };
 
     const processingStarted = await startAudioProcessing(micSelect.value, onAudioData);
 
@@ -157,6 +171,11 @@ async function startInterview() {
         switchView('preflight');
         return;
     }
+
+    // Backend capture needs the device index rather than a browser deviceId.
+    providerManager.webSocketHandler.nativeMicIndex = isNativeAudioMode()
+        ? parseInt(micSelect.value, 10)
+        : null;
 
     webSocketHandler.startInterview();
 }

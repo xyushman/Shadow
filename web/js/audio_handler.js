@@ -13,12 +13,49 @@ let micStream = null;
 let systemStream = null;
 let micGainNode = null;
 
+// When the backend can read the mic and WASAPI loopback itself, the browser
+// is never asked for media access: no getUserMedia prompt, no getDisplayMedia
+// picker, no "sharing your screen" badge.
+let nativeMode = false;
+let nativeDevices = [];
+
+export function isNativeAudioMode() {
+    return nativeMode;
+}
+
 /**
- * Requests permission to use the microphone and populates the dropdown.
- * @returns {Promise<boolean>} True if permission was granted, false otherwise.
+ * Probes the backend for prompt-free native capture and, when available,
+ * fills the mic dropdown from the backend device list instead of calling
+ * getUserMedia (which is what triggers the permission prompt).
+ * @returns {Promise<boolean>} True if audio setup can proceed without prompts.
  */
 export async function setupMicrophone() {
     const micSelect = document.getElementById('mic-select');
+    try {
+        const probe = await fetch('/api/native-audio').then(r => r.json());
+        if (probe && probe.available) {
+            const list = await fetch('/api/native-audio/devices').then(r => r.json());
+            if (list && Array.isArray(list.devices) && list.devices.length > 0) {
+                nativeMode = true;
+                nativeDevices = list.devices;
+                micSelect.innerHTML = '';
+                list.devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = String(device.index);
+                    option.textContent = device.name;
+                    if (device.index === list.defaultIndex) option.selected = true;
+                    micSelect.appendChild(option);
+                });
+                micSelect.disabled = false;
+                devLog('🎙️ Native audio mode: microphone list supplied by backend (no prompt).');
+                return true;
+            }
+        }
+    } catch (err) {
+        devLog('Native audio probe failed, falling back to browser capture:', err);
+    }
+
+    nativeMode = false;
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         stream.getTracks().forEach(track => track.stop());
@@ -51,7 +88,34 @@ export async function setupMicrophone() {
  * @param {function} onAudioData - Callback function to handle the processed PCM audio data.
  * @returns {Promise<boolean>} True if processing started successfully.
  */
+/**
+ * Forces the browser capture path (used when the backend reports native
+ * capture is unavailable after the frontend already skipped media setup).
+ */
+export function enableBrowserFallback() {
+    if (!nativeMode) return;
+    nativeMode = false;
+    devLog('🔁 Switching to browser audio capture (native unavailable).');
+}
+
+/**
+ * Starts audio processing by setting up the AudioContext, loading the worklet,
+ * and connecting the audio streams.
+ * @param {string} micId - The deviceId of the selected microphone.
+ * @param {function} onAudioData - Callback function to handle the processed PCM audio data.
+ * @returns {Promise<boolean>} True if processing started successfully.
+ */
 export async function startAudioProcessing(micId, onAudioData) {
+    if (nativeMode) {
+        // Backend owns the mic + loopback capture; nothing is requested from
+        // the browser, so there is no permission prompt and no share badge.
+        devLog("🎧 Native audio active - browser capture skipped (zero prompts).");
+        return true;
+    }
+    if (micStream && systemStream && audioContext && audioContext.state === 'running') {
+        devLog("🎧 Browser audio already running - reusing existing streams.");
+        return true;
+    }
     try {
         // 1. Get Audio Streams
         micStream = await navigator.mediaDevices.getUserMedia({ audio: { deviceId: { exact: micId } } });

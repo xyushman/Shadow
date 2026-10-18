@@ -11,29 +11,30 @@
     --light-gray: #f5f5f5;
 
     /* === BRAND ACCENTS === */
-    --accent-indigo: #d9d9d9;
-    --accent-violet: #9a9a9a;
-    --accent-indigo-light: #c4c4c4;
-    --success-green: #c1c1c1;
-    --warning-orange: #8f8f8f;
-    --subtle-purple: #d9d9d9;
-    --electric-blue: #d9d9d9;
+    --accent-indigo: #818cf8;
+    --accent-violet: #a78bfa;
+    --accent-indigo-light: #c7d2fe;
+    --success-green: #34d399;
+    --warning-orange: #fbbf24;
+    --subtle-purple: #c4b5fd;
+    --electric-blue: #60a5fa;
 
     /* === SEMANTIC MAP === */
-    --bg-primary: #060606;
-    --bg-secondary: #0d0d0d;
-    --bg-tertiary: #151515;
-    --bg-glass: rgba(14, 14, 14, 0.72);
-    --bg-glass-light: rgba(20, 20, 20, 0.5);
-    --text-primary: #ededed;
-    --text-secondary: #909090;
-    --border-color: rgba(255, 255, 255, 0.07);
-    --border-glow: rgba(255, 255, 255, 0.35);
+    --bg-primary: #070708;
+    --bg-secondary: #0d0d10;
+    --bg-tertiary: #16161a;
+    --bg-glass: rgba(14, 14, 17, 0.78);
+    --bg-glass-light: rgba(22, 22, 26, 0.6);
+    --text-primary: #ececf1;
+    --text-secondary: #9a9aa6;
+    --border-color: rgba(255, 255, 255, 0.08);
+    --border-glow: rgba(129, 140, 248, 0.45);
     --accent-primary: var(--accent-indigo);
     --accent-success: var(--success-green);
     --accent-warning: var(--warning-orange);
-    --accent-glow: rgba(255, 255, 255, 0.12);
-    --accent-solid: #3f3f3f;
+    --accent-danger: #f87171;
+    --accent-glow: rgba(129, 140, 248, 0.18);
+    --accent-solid: #4f46e5;
 
     /* === SPACING === */
     --space-xs: 4px;
@@ -178,7 +179,7 @@ h1 {
     font-size: 30px;
     font-weight: 800;
     letter-spacing: 0.18em;
-    background: linear-gradient(135deg, #ffffff 0%, #d4d4d4 50%, #9e9e9e 100%);
+    background: linear-gradient(135deg, #ffffff 0%, #c7d2fe 45%, #818cf8 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
@@ -232,7 +233,7 @@ h1 {
 .tab-btn.active {
     background: var(--accent-solid);
     color: #fff;
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.25);
+    box-shadow: 0 2px 10px rgba(79, 70, 229, 0.35);
 }
 
 .tab-pane {
@@ -275,7 +276,7 @@ fieldset:first-of-type {
 }
 
 legend {
-    color: var(--text-primary);
+    color: var(--accent-indigo-light);
     font-weight: 600;
     font-size: var(--font-xs);
     text-transform: uppercase;
@@ -320,9 +321,9 @@ input[type="password"],
 textarea,
 select {
     width: 100%;
-    background: var(--bg-primary);
+    background: var(--bg-secondary);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-md);
     padding: 10px var(--space-md);
     color: var(--text-primary);
     font-size: var(--font-sm);
@@ -858,28 +859,28 @@ button {
     font-weight: 600;
     color: #fff;
     background: var(--accent-solid);
-    border: 1px solid var(--accent-primary);
-    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     margin-top: var(--space-lg);
     cursor: pointer;
     transition: all var(--transition-base);
     font-family: inherit;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.01em;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
 }
 
 button:hover:not(:disabled) {
-    background: #525252;
-    border-color: #6a6a6a;
+    background: #5b52f0;
+    border-color: transparent;
     transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(255, 255, 255, 0.3);
+    box-shadow: 0 6px 18px rgba(79, 70, 229, 0.35);
 }
 
 button:active:not(:disabled) {
     transform: translateY(0);
-    box-shadow: 0 1px 6px rgba(255, 255, 255, 0.15);
+    box-shadow: 0 1px 6px rgba(79, 70, 229, 0.25);
 }
 
 button:focus-visible {
@@ -1143,7 +1144,8 @@ select:focus-visible {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--border-color);
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {

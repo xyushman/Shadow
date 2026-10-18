@@ -250,6 +250,45 @@ async def capture_screen():
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Screen capture failed: {e}")
 
+@router.get("/api/native-audio")
+async def native_audio_status():
+    """Reports whether the backend can capture audio itself (zero permission prompts)."""
+    from services.audio_capture import probe_native_audio
+    return probe_native_audio()
+
+
+@router.get("/api/native-audio/devices")
+async def native_audio_devices():
+    """Lists input devices so the mic dropdown can be filled without getUserMedia."""
+    import pyaudiowpatch as pyaudio
+    devices = []
+    try:
+        pa = pyaudio.PyAudio()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Audio device list failed: {e}")
+    try:
+        for idx in range(pa.get_device_count()):
+            try:
+                info = pa.get_device_info_by_index(idx)
+            except Exception:
+                continue
+            if info.get("maxInputChannels", 0) > 0 and not info.get("isLoopbackDevice"):
+                devices.append({
+                    "index": idx,
+                    "name": info.get("name", f"Device {idx}"),
+                    "defaultRate": int(round(info.get("defaultSampleRate", 48000))),
+                })
+        try:
+            default_idx = pa.get_default_input_device_info().get("index")
+        except Exception:
+            default_idx = devices[0]["index"] if devices else None
+    finally:
+        pa.terminate()
+    if not devices:
+        raise HTTPException(status_code=500, detail="No input devices found")
+    return {"devices": devices, "defaultIndex": default_idx}
+
+
 @router.get("/api/transparency")
 async def get_transparency():
     """Get current window transparency information"""
