@@ -40,6 +40,7 @@ export class StateManager {
         // DOM form elements
         this.onboardingForm = {};
         this.initializeFormElements();
+        this.setupSessionTypePresets();
 
         // Vision mode debouncing
         this.lastVisionToggleTime = 0;
@@ -53,9 +54,11 @@ export class StateManager {
         this.onboardingForm = {
             name: document.getElementById('user-name'),
             company: document.getElementById('user-company'),
+            jobProfile: document.getElementById('user-job-profile'),
             role: document.getElementById('user-role'),
             resume: document.getElementById('user-resume'),
             focusCheckboxes: document.querySelectorAll('input[name="focus"]'),
+            sessionTypeRadios: document.querySelectorAll('input[name="session-type"]'),
             objectives: document.getElementById('user-objectives'),
             providerSelect: document.getElementById('ai-provider-select'),
             modelSelect: document.getElementById('ai-model-select'),
@@ -79,6 +82,27 @@ export class StateManager {
 
     setSocket(socket) {
         this.appState.socket = socket;
+    }
+
+    setupSessionTypePresets() {
+        // Selecting an OA preset pre-checks the matching Interview Focus boxes.
+        // Live Interview / Auto leave the user's manual focus selection alone.
+        const presetFocus = {
+            amazon_oa: ['coding', 'behavioral'],
+            infosys_oa: ['coding'],
+            tcs_oa: ['coding', 'dsa'],
+        };
+
+        (this.onboardingForm.sessionTypeRadios || []).forEach(radio => {
+            radio.addEventListener('change', () => {
+                const focusValues = presetFocus[radio.value];
+                if (!focusValues) return;
+                (this.onboardingForm.focusCheckboxes || []).forEach(cb => {
+                    cb.checked = focusValues.includes(cb.value);
+                });
+                devLog(`Session type set to ${radio.value} — focus preset applied:`, focusValues);
+            });
+        });
     }
 
     handleOnboarding() {
@@ -148,6 +172,8 @@ export class StateManager {
 
         // Store validated data
         const focus = focusCheckboxes.map(cb => cb.value);
+        const sessionType = Array.from(this.onboardingForm.sessionTypeRadios || [])
+            .find(radio => radio.checked)?.value || 'live_interview';
         const selectedLanguages = Array.from(this.onboardingForm.languageCheckboxes || [])
             .filter(cb => cb.checked)
             .map(cb => cb.value);
@@ -155,9 +181,11 @@ export class StateManager {
         this.appState.onboardingData = {
             name: this.onboardingForm.name?.value || '',
             company: this.onboardingForm.company?.value || '',
+            jobProfile: this.onboardingForm.jobProfile?.value || '',
             role: this.onboardingForm.role?.value || '',
             resume: this.onboardingForm.resume?.value || '',
             focus: focus,
+            interviewType: sessionType,
             objectives: this.onboardingForm.objectives?.value || '',
         };
 

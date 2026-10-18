@@ -715,7 +715,7 @@ class WindowManager:
                     # Hide immediately — the interview-start hide would come later.
                     share_active = bool(indicators)
                     if share_active and not share_was_active:
-                        if self.stealth_active and self.hwnd and _user32.IsWindowVisible(self.hwnd):
+                        if self.hwnd and _user32.IsWindowVisible(self.hwnd):
                             print("🖥️ Screen share detected — hiding Shadow immediately (stealth)")
                             self.hide_window()
                     share_was_active = share_active
@@ -1018,11 +1018,21 @@ class WindowManager:
             return False
         self._cancel_peek_timer()
         was_visible = bool(_user32.IsWindowVisible(self.hwnd))
-        _user32.ShowWindow(self.hwnd, SW_HIDE)
+        for _ in range(3):
+            _user32.ShowWindow(self.hwnd, SW_HIDE)
+            time.sleep(0.05)
+            if not _user32.IsWindowVisible(self.hwnd):
+                break
+        try:
+            # Push the window far off-screen as a fallback in case SW_HIDE is
+            # ignored by the host framework. Keep its size (SWP_NOSIZE).
+            _user32.SetWindowPos(self.hwnd, None, -32000, -32000, 0, 0, 0x0001 | 0x0010)
+        except Exception:
+            pass
         self.set_ghost_mode(False)
         self._scrub_title()
         if was_visible:
-            print("🕵️‍ Window hidden (stealth) — press Alt+Z to peek.")
+            print("🕵️ Window hidden (stealth) — press Alt+Z to peek.")
         return True
 
     def show_window(self) -> bool:
@@ -1605,6 +1615,7 @@ def _find_own_window(title: str) -> Optional[int]:
     target_pid = os.getpid()
     user32 = _user32
     found = []
+    candidates = []  # (area, hwnd) for fallback largest-window selection
 
     get_text_len = user32.GetWindowTextLengthW
     get_text_len.argtypes = (wintypes.HWND,)
@@ -1615,6 +1626,7 @@ def _find_own_window(title: str) -> Optional[int]:
     get_pid = user32.GetWindowThreadProcessId
     get_pid.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
     get_pid.restype = wintypes.DWORD
+    get_rect = user32.GetWindowRect
     user32.EnumWindows.argtypes = (ctypes.c_void_p, wintypes.LPARAM)
     user32.EnumWindows.restype = wintypes.BOOL
 
@@ -1624,18 +1636,33 @@ def _find_own_window(title: str) -> Optional[int]:
         get_pid(hwnd, ctypes.byref(pid))
         if pid.value != target_pid:
             return True
+        # Track every visible top-level window of this process for fallback.
+        try:
+            r = wintypes.RECT()
+            if get_rect(hwnd, ctypes.byref(r)):
+                area = max(0, r.right - r.left) * max(0, r.bottom - r.top)
+                if area > 0:
+                    candidates.append((area, int(hwnd)))
+        except Exception:
+            pass
         length = get_text_len(hwnd)
         if length <= 0:
             return True
         buf = ctypes.create_unicode_buffer(length + 1)
         get_text(hwnd, buf, length + 1)
-        if buf.value == title:
+        if title and buf.value == title:
             found.append(int(hwnd))
             return False  # stop enumeration — match found
         return True
 
     user32.EnumWindows(enum_cb, 0)
-    return found[0] if found else None
+    if found:
+        return found[0]
+    # Fallback: largest-area visible window owned by this process.
+    if candidates:
+        candidates.sort(reverse=True)
+        return candidates[0][1]
+    return None
 
 
 def apply_capture_protection(window):
@@ -1684,9 +1711,15 @@ def apply_capture_protection(window):
                 print(f"🔍 Method 2 (EnumWindows PID-filtered, attempt {attempt + 1}): Found {hex(hwnd)}")
                 break
 
+    # Method 2 already tried title match; if still no hwnd, retry with empty
+    # title to trigger the largest-window fallback.
     if not hwnd:
-        print("❌ CRITICAL: Could not obtain window handle!")
-        return False
+        for attempt in range(5):
+            time.sleep(0.1)
+            hwnd = _find_own_window("")
+            if hwnd:
+                print(f"🔍 Method 2b (largest window fallback, attempt {attempt + 1}): Found {hex(hwnd)}")
+                break
 
     # --- Optional: old blackout mode via STEALTH_MODE env var ---
     # Read via os.environ OR .env file: nothing calls load_dotenv(), so an

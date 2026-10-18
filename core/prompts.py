@@ -24,6 +24,9 @@ def build_unlimited_candidate_profile(persistent_context: dict, include_personal
     if persistent_context.get('target_role'):
         profile_parts.append(f"Target Role: {persistent_context['target_role']}")
     
+    if persistent_context.get('job_profile'):
+        profile_parts.append(f"Target Job Profile: {persistent_context['job_profile']}")
+    
     if persistent_context.get('focus_areas'):
         focus_areas = ', '.join(persistent_context['focus_areas'])
         profile_parts.append(f"Interview Focus Areas: {focus_areas}")
@@ -122,6 +125,21 @@ ACCURACY (ANTI-HALLUCINATION):
     prompt_parts.append("🔒 PERSISTENT CANDIDATE CONTEXT (ALWAYS PRESENT - NEVER REMOVED):")
     prompt_parts.append(build_unlimited_candidate_profile(persistent_context, settings.PERSONALIZE_ANSWERS))
     prompt_parts.append("=" * 100)
+
+    # SESSION MODE — drives answer style based on the chosen session type
+    interview_type = persistent_context.get('interview_type', 'live_interview')
+    mode_instructions = {
+        'live_interview': "Live spoken interview: conversational, first-person, concise but complete, ready to speak aloud.",
+        'auto': "Adaptive mode: detect the question type (behavioral/technical/coding/MCQ) and respond accordingly.",
+        'amazon_oa': "Amazon Online Assessment: coding problems (DSA) PLUS work-style / Leadership Principles situational judgment. For coding, provide optimal Java/Python solution with complexity; for work-style, pick the option best aligned with Amazon's Leadership Principles (Customer Obsession, Ownership, Bias for Action, etc.) and justify.",
+        'infosys_oa': "Infosys Online Assessment: coding only. Provide clean, correct code in the chosen language with edge cases and complexity. No behavioral content.",
+        'tcs_oa': "TCS Online Assessment: aptitude (quantitative/logical/verbal) PLUS coding. Solve aptitude step-by-step; for coding provide correct, efficient solution.",
+        'all_oa': "Comprehensive Online Assessment combining ALL formats: algorithmic coding (DSA), technical MCQs (OS/DBMS/CN/OOP), cognitive aptitude & reasoning, development/project-based tasks, system administration/infrastructure, and situational judgment/behavioral. Adapt the response to whichever format the question represents, and cover multiple formats when mixed.",
+    }
+    if interview_type in mode_instructions:
+        prompt_parts.append("🎯 SESSION MODE:")
+        prompt_parts.append(mode_instructions[interview_type])
+        prompt_parts.append("=" * 100)
 
     # GROUND-TRUTH LOOP: the candidate's own ratings of previous answers (Alt+G / Alt+B)
     feedback_notes = complete_context.get('feedback_notes') or []
@@ -386,10 +404,23 @@ Give a brief, professional answer.
     name = persistent_context.get('candidate_name', '')
     role = persistent_context.get('target_role', '')
     company = persistent_context.get('target_company', '')
+    job_profile = persistent_context.get('job_profile', '')
     resume = persistent_context.get('complete_resume', '')
 
     if name and role and company:
         profile_parts.append(f"You are {name}, applying for {role} at {company}.")
+    if job_profile:
+        profile_parts.append(f"Target job profile: {job_profile}.")
+
+    interview_type = persistent_context.get('interview_type', 'live_interview')
+    mode_hints = {
+        'amazon_oa': "Session mode: Amazon OA (coding + work-style Leadership Principles).",
+        'infosys_oa': "Session mode: Infosys OA (coding only).",
+        'tcs_oa': "Session mode: TCS OA (aptitude + coding).",
+        'all_oa': "Session mode: All-in-one OA (adapt to any format).",
+    }
+    if interview_type in mode_hints:
+        profile_parts.append(mode_hints[interview_type])
     
     # Include key resume highlights (a snippet for quick reference)
     if resume and settings.PERSONALIZE_ANSWERS:

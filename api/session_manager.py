@@ -76,14 +76,25 @@ class InterviewSession:
                 "available_presets": list(self.llm_manager.presets.keys()),
                 "health_status": health_results
             })
-            print(f"✅ Session {self.session_id}: Interview started and managers initialized.")
+            print(f"Session {self.session_id}: Interview started and managers initialized.")
 
-            # Hide-by-default stealth: once the interview is live the Shadow
-            # window leaves the screen entirely (absent from screen shares).
-            # Alt+Z peeks it back for STEALTH_PEEK_SECONDS.
+            # Hide-by-default stealth: hide the Shadow window so it is absent
+            # from screen shares. Retry until actually hidden.
             import window_manager as _wm
-            if getattr(_wm.window_manager, "stealth_active", False):
-                _wm.window_manager.hide_window()
+            wm = getattr(_wm, "window_manager", None)
+            if wm is not None and getattr(wm, "hwnd", None):
+                for _attempt in range(3):
+                    try:
+                        wm.hide_window()
+                    except Exception as _e:
+                        print(f"⚠️ hide_window attempt {_attempt+1} failed: {_e}")
+                    try:
+                        import ctypes
+                        if not ctypes.windll.user32.IsWindowVisible(wm.hwnd):
+                            break
+                    except Exception:
+                        break
+                print("Shadow hidden for stealth (interview started).")
         except Exception as e:
             print(f"❌ CRITICAL: Session {self.session_id}: Failed to start interview: {e}")
             await self._send_json("error", {"message": f"Failed to initialize AI providers: {str(e)}"})
@@ -208,8 +219,12 @@ class InterviewSession:
         session_manager.remove_session(self.session_id)
         # Bring the UI back once the interview (and any screen share) is over.
         import window_manager as _wm
-        if getattr(_wm.window_manager, "stealth_active", False):
-            _wm.window_manager.show_window()
+        wm = getattr(_wm, "window_manager", None)
+        if wm is not None and getattr(wm, "hwnd", None):
+            try:
+                wm.show_window()
+            except Exception as _e:
+                print(f"⚠️ show_window failed: {_e}")
 
     async def handle_reset_session(self, payload: dict):
         """Handles the reset of a session's context."""

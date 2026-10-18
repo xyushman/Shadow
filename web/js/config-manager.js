@@ -166,7 +166,9 @@ export class ConfigManager {
             const result = await response.json();
 
             if (result.success) {
-                btn.textContent = '✅ Success';
+                btn.textContent = (result.total_keys > 1)
+                    ? `✅ key ${result.working_key}/${result.total_keys}`
+                    : '✅ Success';
                 btn.style.borderColor = 'var(--accent-success)';
             } else {
                 btn.textContent = '❌ Failed';

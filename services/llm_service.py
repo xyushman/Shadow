@@ -110,6 +110,11 @@ class LLMManager:
         
         print(f"🎯 Processing with {self.provider_name}-{self.model_name}: '{question[:100]}...'")
         
+        # Proactive round-robin: start every request on the next key so
+        # multiple keys (e.g. several Gemini keys) share rate limits evenly.
+        if len(self.api_keys) > 1:
+            self._rotate_key()
+
         # Try all available keys — instant retry on any error
         max_attempts = len(self.api_keys)
         last_error = None
