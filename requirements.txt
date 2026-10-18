@@ -11,3 +11,5 @@ orjson
 aiofiles
 pynput
 python-dotenv
+Pillow
+

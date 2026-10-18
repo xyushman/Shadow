@@ -249,6 +249,8 @@ async def capture_screen():
         return {"success": True, "dataUrl": f"data:image/jpeg;base64,{b64}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Screen capture failed: {e}")
+
+@router.get("/api/transparency")
 async def get_transparency():
     """Get current window transparency information"""
     return window_manager.get_transparency_info()
