@@ -1,8 +1,5 @@
 # 👻 Nyx — The AI They Can't See, Can't Detect, Can't Stop
 
-<div align="center">
-  <img src="logo.png" alt="Nyx Logo" width="300" />
-</div>
 
 **An invisible AI overlay that lives on your screen — answers questions, solves problems, analyzes screenshots, and feeds you real-time intelligence. Works during interviews, exams, meetings, or anything on your screen. Invisible to screen recordings. Undetectable by proctoring software. You see everything. They see nothing.**
 
@@ -751,14 +748,8 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 ---
 
-<div align="center">
-
-<img src="logo.png" alt="Nyx AI" width="100" />
-
 ### 🏆 **Nyx: Victory Is Yours**
 
 **Grab Nyx. Crush it. Today.**
 
-[⬆ Back to Top](#-shadow-your-ultimate-ally-for-interviews-and-examsbuilt-in-48-hours-free-forever)
-
-</div>
+[⬆ Back to Top](#-nyx-the-ai-they-cant-see-cant-detect-cant-stop)
