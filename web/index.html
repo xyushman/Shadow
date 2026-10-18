@@ -404,20 +404,25 @@
                     <span>Live Interview Session</span>
                 </div>
                 <div class="header-controls">
-                    <button id="auto-mode-btn" class="toggle-btn auto-on" title="Toggle automatic answering (Alt+A)">
-                        Auto: ON
-                    </button>
-                    <button id="response-style-btn" class="toggle-btn" title="Toggle concise/detailed answers (Alt+D)">
-                        Detailed
-                    </button>
-                    <button id="paste-question-btn" class="pill-btn" title="Read clipboard / type a question (Alt+C)">Paste Q</button>
-                    <button id="history-btn" class="pill-btn">History <span id="history-count">0</span></button>
-                    <button id="mute-btn" class="mute-btn" title="Mute microphone input to app (Alt+M)">
-                        <span class="mute-icon">🎤</span>
-                        <span class="mute-text">Mute</span>
-                    </button>
-                    <button id="reset-interview-btn" class="reset-btn">Reset</button>
-                    <button id="end-interview-btn" class="end-btn">End Interview</button>
+                    <div class="control-group" role="group" aria-label="Answer controls">
+                        <button id="auto-mode-btn" class="toggle-btn auto-on" title="Toggle automatic answering (Alt+A)">
+                            Auto: ON
+                        </button>
+                        <button id="response-style-btn" class="toggle-btn" title="Toggle concise/detailed answers (Alt+D)">
+                            Detailed
+                        </button>
+                        <button id="paste-question-btn" class="pill-btn" title="Read clipboard / type a question (Alt+C)">Paste Q</button>
+                        <button id="history-btn" class="pill-btn">History <span id="history-count">0</span></button>
+                    </div>
+                    <div class="header-divider" aria-hidden="true"></div>
+                    <div class="control-group" role="group" aria-label="Session controls">
+                        <button id="mute-btn" class="mute-btn" title="Mute microphone input to app (Alt+M)">
+                            <span class="mute-icon">🎤</span>
+                            <span class="mute-text">Mute</span>
+                        </button>
+                        <button id="reset-interview-btn" class="reset-btn">Reset</button>
+                        <button id="end-interview-btn" class="end-btn">End Interview</button>
+                    </div>
                 </div>
             </div>
 
