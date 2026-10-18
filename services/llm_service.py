@@ -82,7 +82,7 @@ class LLMManager:
             self.error_count += 1
             return False
 
-    async def get_ai_answer(self, question: str, stream_callback=None) -> Tuple[str, Dict[str, Any]]:
+    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None) -> Tuple[str, Dict[str, Any]]:
         """Get AI answer with instant key rotation on any error — zero delay retries."""
         if not self.client:
             return "I'm sorry, the AI service is not available at this time.", {
@@ -104,7 +104,7 @@ class LLMManager:
         # Generate prompt with persistent context.
         # GENERATE_FULL_ANSWERS=false routes to the short-form prompt.
         if settings.GENERATE_FULL_ANSWERS:
-            prompt = get_interview_answer_prompt(question, self.context_manager)
+            prompt = get_interview_answer_prompt(question, self.context_manager, response_style=response_style)
         else:
             prompt = get_quick_response_prompt(question, self.context_manager)
         
@@ -436,15 +436,15 @@ class MultiLLMManager:
             }
         return {"key": "unknown", "provider": "Unknown", "model": "Unknown", "description": "Unknown"}
 
-    async def get_ai_answer(self, question: str, stream_callback=None) -> Tuple[str, Dict[str, Any]]:
-        """Get AI answer with automatic fallback and error recovery, with optional streaming"""
+    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None) -> Tuple[str, Dict[str, Any]]:
+        """Handles AI answer generation with fallback, with optional streaming"""
         if not self.providers:
             return "No AI providers are configured.", {"error": "no_providers"}
         
         # Try the active provider first
         if self.active_preset_key in self.providers:
             manager = self.providers[self.active_preset_key]
-            answer, result_info = await manager.get_ai_answer(question, stream_callback)
+            answer, result_info = await manager.get_ai_answer(question, stream_callback, response_style)
             
             # If successful, return the answer
             if result_info.get("success"):
@@ -461,7 +461,7 @@ class MultiLLMManager:
                 
                 manager = self.providers[fallback_preset]
                 # Don't use streaming for fallback
-                answer, result_info = await manager.get_ai_answer(question, None)
+                answer, result_info = await manager.get_ai_answer(question, None, response_style)
                 
                 if result_info.get("success"):
                     # Update active preset to the working one

@@ -205,6 +205,12 @@ class GlobalCommandMonitor:
                 self._execute_browser_command('if (window.switchVisionModel) { window.switchVisionModel(); } else { console.warn("switchVisionModel not available"); }')
             elif command == 'reset_interview':
                 self._execute_browser_command('if (window.resetInterview) { window.resetInterview(); } else { console.warn("resetInterview not available"); }')
+            elif command == 'toggle_auto_mode':
+                self._execute_browser_command('if (window.toggleAutoMode) { window.toggleAutoMode(); } else { console.warn("toggleAutoMode not available"); }')
+            elif command == 'answer_clipboard':
+                self._execute_browser_command('if (window.answerFromClipboard) { window.answerFromClipboard(); } else { console.warn("answerFromClipboard not available"); }')
+            elif command == 'toggle_response_style':
+                self._execute_browser_command('if (window.toggleResponseStyle) { window.toggleResponseStyle(); } else { console.warn("toggleResponseStyle not available"); }')
             elif command == 'answer_feedback':
                 rating = command_data.get('rating', 'good')
                 if rating not in ('good', 'bad'):

@@ -121,6 +121,30 @@
                         </div>
                     </fieldset>
                     <fieldset>
+                        <legend>Answer Mode</legend>
+                        <div class="session-type-grid" id="answer-mode-grid">
+                            <label class="session-type-card">
+                                <input type="radio" name="answer-mode" value="automatic" checked>
+                                <span class="session-type-title">Automatic</span>
+                                <small>Detects new questions and answers instantly</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="answer-mode" value="manual">
+                                <span class="session-type-title">Manual</span>
+                                <small>Answers only when you trigger it</small>
+                            </label>
+                            <label class="session-type-card">
+                                <input type="radio" name="answer-mode" value="both">
+                                <span class="session-type-title">Both</span>
+                                <small>Auto by default, toggle on/off anytime</small>
+                            </label>
+                        </div>
+                        <label class="auto-toggle-row" id="auto-toggle-row" style="display: none;">
+                            <input type="checkbox" id="auto-mode-toggle" checked>
+                            <span>Auto mode ON (toggle anytime with <kbd>Alt+A</kbd>)</span>
+                        </label>
+                    </fieldset>
+                    <fieldset>
                         <legend>Job Description / Requirements</legend>
                         <textarea id="user-objectives"
                             placeholder="Paste the job description or key requirements here to give the AI context."></textarea>
@@ -380,6 +404,14 @@
                     <span>Live Interview Session</span>
                 </div>
                 <div class="header-controls">
+                    <button id="auto-mode-btn" class="toggle-btn auto-on" title="Toggle automatic answering (Alt+A)">
+                        Auto: ON
+                    </button>
+                    <button id="response-style-btn" class="toggle-btn" title="Toggle concise/detailed answers (Alt+D)">
+                        Detailed
+                    </button>
+                    <button id="paste-question-btn" class="pill-btn" title="Read clipboard / type a question (Alt+C)">Paste Q</button>
+                    <button id="history-btn" class="pill-btn">History <span id="history-count">0</span></button>
                     <button id="mute-btn" class="mute-btn" title="Mute microphone input to app (Alt+M)">
                         <span class="mute-icon">🎤</span>
                         <span class="mute-text">Mute</span>
@@ -393,6 +425,26 @@
             <div class="interview-content">
                 <div class="conversation-stream" id="conversation-stream">
                     <!-- Dynamic content will be added here -->
+                </div>
+
+                <!-- Paste / type a question directly (works even when OCR fails) -->
+                <div class="paste-panel" id="paste-panel">
+                    <textarea id="paste-question-input" rows="2"
+                        placeholder="Paste or type the question here, then press Answer (Ctrl+Enter)"></textarea>
+                    <div class="paste-panel-actions">
+                        <button id="paste-from-clipboard-btn" class="btn-small">Read Clipboard</button>
+                        <button id="paste-answer-btn" class="btn-small btn-primary">Answer</button>
+                        <button id="paste-close-btn" class="btn-small">Close</button>
+                    </div>
+                </div>
+
+                <!-- Answer history side panel -->
+                <div class="history-panel" id="history-panel">
+                    <div class="history-panel-header">
+                        <span>Answer History</span>
+                        <button id="history-close-btn" class="btn-small">Close</button>
+                    </div>
+                    <div class="history-list" id="history-list"></div>
                 </div>
             </div>
 

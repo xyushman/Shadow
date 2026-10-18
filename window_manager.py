@@ -1221,6 +1221,21 @@ class WindowManager:
             self.send_interview_command("reset_interview")
             return False
 
+        def on_toggle_auto_mode():
+            """Toggle automatic answering (Alt+A)"""
+            self.send_interview_command("toggle_auto_mode")
+            return False
+
+        def on_answer_clipboard():
+            """Answer whatever is on the clipboard (Alt+C)"""
+            self.send_interview_command("answer_clipboard")
+            return False
+
+        def on_toggle_response_style():
+            """Toggle concise/detailed answers (Alt+D)"""
+            self.send_interview_command("toggle_response_style")
+            return False
+
         def on_answer_feedback_good():
             """Rate last AI answer as good (Alt+G)"""
             self.send_answer_feedback("good")
@@ -1278,7 +1293,7 @@ class WindowManager:
             'x': 0x58, 'z': 0x5A, 'v': 0x56, 's': 0x53, 'p': 0x50, 'r': 0x52,
             'q': 0x51, 'w': 0x57, 'e': 0x45, 't': 0x54, 'm': 0x4D, 'u': 0x55,
             '1': 0x31, '2': 0x32, '3': 0x33, 'o': 0x4F, 'i': 0x49, 'j': 0x4A,
-            'g': 0x47, 'b': 0x42,
+            'g': 0x47, 'b': 0x42, 'a': 0x41, 'c': 0x43, 'd': 0x44,
             'left': 0x25, 'right': 0x27, 'up': 0x26, 'down': 0x28,
         }
 
@@ -1306,6 +1321,9 @@ class WindowManager:
             (MOD_ALT | MOD_NOREPEAT, VK['i'], on_move_up, 'Alt+I: Move window up'),
             (MOD_ALT | MOD_NOREPEAT, VK['j'], on_move_down, 'Alt+J: Move window down'),
             (MOD_ALT | MOD_NOREPEAT, VK['o'], on_reset_interview, 'Alt+O: Reset interview session'),
+            (MOD_ALT | MOD_NOREPEAT, VK['a'], on_toggle_auto_mode, 'Alt+A: Toggle automatic answering'),
+            (MOD_ALT | MOD_NOREPEAT, VK['c'], on_answer_clipboard, 'Alt+C: Answer clipboard question'),
+            (MOD_ALT | MOD_NOREPEAT, VK['d'], on_toggle_response_style, 'Alt+D: Toggle concise/detailed answers'),
             (MOD_ALT | MOD_NOREPEAT, VK['g'], on_answer_feedback_good, 'Alt+G: Rate last AI answer as good'),
             (MOD_ALT | MOD_NOREPEAT, VK['b'], on_answer_feedback_bad, 'Alt+B: Rate last AI answer as missed/bad'),
             (MOD_ALT, VK['up'], on_scroll_up_start, 'Alt+Up: Scroll up (hold for continuous)'),
