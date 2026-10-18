@@ -1,6 +1,6 @@
-# 🤝 Contributing to Shadow
+# 🤝 Contributing to Nyx
 
-First off — **thank you** for wanting to contribute! Every bug report, feature idea, and pull request makes Shadow better for everyone.
+First off — **thank you** for wanting to contribute! Every bug report, feature idea, and pull request makes Nyx better for everyone.
 
 ---
 
@@ -127,4 +127,4 @@ Open a GitHub issue or start a Discussion — we're happy to help!
 
 ---
 
-**⭐ Star the repo if you find Shadow useful — it helps more people discover it!**
+**⭐ Star the repo if you find Nyx useful — it helps more people discover it!**

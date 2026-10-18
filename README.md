@@ -1,4 +1,4 @@
-# 👻 Shadow — The AI They Can't See, Can't Detect, Can't Stop
+# 👻 Nyx — The AI They Can't See, Can't Detect, Can't Stop
 
 
 **An invisible AI overlay that lives on your screen — answers questions, solves problems, analyzes screenshots, and feeds you real-time intelligence. Works during interviews, exams, meetings, or anything on your screen. Invisible to screen recordings. Undetectable by proctoring software. You see everything. They see nothing.**
@@ -24,7 +24,7 @@
 
 | | |
 |--------|--------|
-| ⚡ **Cerebras Vision** | Cerebras now does image input via **Gemma 4 31B** at ~1850 tok/s — the fastest screenshot-to-answer path Shadow has ever had, and the new vision default |
+| ⚡ **Cerebras Vision** | Cerebras now does image input via **Gemma 4 31B** at ~1850 tok/s — the fastest screenshot-to-answer path Nyx has ever had, and the new vision default |
 | 🚀 **Latest models** | Refreshed across every provider: GPT-OSS 120B, Gemma 4 31B, Gemini 3.6 / 3.5 Flash |
 | 🎯 **Tuned for speed** | Cerebras drives both text and vision by default. Need maximum accuracy on a dense screenshot? `Alt+T` swaps to Gemini 3.6 Flash |
 | 🏷️ **Labelled model picker** | Every model now shows its speed/accuracy tradeoff right in the dropdown, so you pick the right one under pressure |
@@ -37,19 +37,19 @@
 
 ---
 
-## ✨ What is Shadow?
+## ✨ What is Nyx?
 
-Shadow isn't just another interview prep tool. It's your secret weapon for **any challenge**—from aptitude tests to quantitative brain-twisters, behavioral showdowns to certification exams. Shadow is a **revolutionary AI assistant** that operates in real-time, providing candidates with the critical insights they need to excel in high-stakes situations—all without ever tripping tab-switching warnings, thanks to its stealthy, seamless design.
+Nyx isn't just another interview prep tool. It's your secret weapon for **any challenge**—from aptitude tests to quantitative brain-twisters, behavioral showdowns to certification exams. Nyx is a **revolutionary AI assistant** that operates in real-time, providing candidates with the critical insights they need to excel in high-stakes situations—all without ever tripping tab-switching warnings, thanks to its stealthy, seamless design.
 
-Imagine having a world-class expert whispering in your ear, helping you deconstruct complex problems, articulate your thoughts, and navigate the toughest questions with confidence. **That's Shadow.**
+Imagine having a world-class expert whispering in your ear, helping you deconstruct complex problems, articulate your thoughts, and navigate the toughest questions with confidence. **That's Nyx.**
 
 ### How It Works
 
-Shadow sits on top of your screen as an **invisible overlay** during live interviews and exams. It **listens** to conversations in real-time via Deepgram speech-to-text, **generates** intelligent coaching responses using blazing-fast LLMs (Groq, Cerebras, Gemini), and lets you **screenshot** any problem for instant Vision AI solutions—all while staying **completely hidden** from screen recordings, proctoring software, and human observers.
+Nyx sits on top of your screen as an **invisible overlay** during live interviews and exams. It **listens** to conversations in real-time via Deepgram speech-to-text, **generates** intelligent coaching responses using blazing-fast LLMs (Groq, Cerebras, Gemini), and lets you **screenshot** any problem for instant Vision AI solutions—all while staying **completely hidden** from screen recordings, proctoring software, and human observers.
 
 ---
 
-## 🎥 See Shadow in Action
+## 🎥 See Nyx in Action
 
 A quick walkthrough of every setup step — profile, AI models, advanced keys, and hotkeys.
 
@@ -81,7 +81,7 @@ The **Advanced Config** tab is the raw control panel. Enter your **Deepgram API 
 <details>
 <summary><b>Step 4 · Commands & Tips — Complete hotkey reference with pro tips</b></summary>
 
-The final onboarding tab is your **cheat sheet**. Three highlighted pro-tip cards cover: 🔒 **Stealth Professional Tip** (always use global hotkeys — never click Shadow during proctored exams), 📸 **Multi-Screenshot Analysis** (queue up to 4 screenshots with `Alt+S`, process all at once with `Alt+P`), and ⚡ **Speed Strategy** (use `Alt+E` to auto-select the fastest healthy provider). Below, every hotkey is organized by category with color-coded badges.
+The final onboarding tab is your **cheat sheet**. Three highlighted pro-tip cards cover: 🔒 **Stealth Professional Tip** (always use global hotkeys — never click Nyx during proctored exams), 📸 **Multi-Screenshot Analysis** (queue up to 4 screenshots with `Alt+S`, process all at once with `Alt+P`), and ⚡ **Speed Strategy** (use `Alt+E` to auto-select the fastest healthy provider). Below, every hotkey is organized by category with color-coded badges.
 
 </details>
 
@@ -89,21 +89,21 @@ The final onboarding tab is your **cheat sheet**. Three highlighted pro-tip card
 
 ### ✅ Pre-Flight Check & Permissions
 
-Shadow's Pre-Flight Check runs before every session. It validates your microphone access, backend connection, Deepgram API, and every configured AI provider. Grant the mic permission prompt, wait for all checks to turn green, then hit **Start Interview** and you're live.
+Nyx's Pre-Flight Check runs before every session. It validates your microphone access, backend connection, Deepgram API, and every configured AI provider. Grant the mic permission prompt, wait for all checks to turn green, then hit **Start Interview** and you're live.
 
 ---
 
 ### 👻 Stealth Mode in Action
 
-Shadow stays **visible to you** but is **excluded from screen capture entirely** — no black rectangle, no content leak. Uses Windows `WDA_EXCLUDEFROMCAPTURE` so the window is invisible in Zoom, Teams, Meet, OBS, and browser screen-share while remaining fully usable on your monitor. Toggle click-through ghost mode with `Alt+X`; control everything else via global hotkeys so the interview window never loses focus.
+Nyx stays **visible to you** but is **excluded from screen capture entirely** — no black rectangle, no content leak. Uses Windows `WDA_EXCLUDEFROMCAPTURE` so the window is invisible in Zoom, Teams, Meet, OBS, and browser screen-share while remaining fully usable on your monitor. Toggle click-through ghost mode with `Alt+X`; control everything else via global hotkeys so the interview window never loses focus.
 
 ---
 
-## 🔥 Shadow in the Hot Seat: Crush Every Round
+## 🔥 Nyx in the Hot Seat: Crush Every Round
 
 ### The Scene: Your Make-or-Break Moment
 
-Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an interview or an exam. Its **Stealth Mode** ensures you can access its powerful features without raising any red flags, keeping your focus entirely on the task at hand.
+Clock's ticking. Stakes are high. Nyx's got you covered—whether it's an interview or an exam. Its **Stealth Mode** ensures you can access its powerful features without raising any red flags, keeping your focus entirely on the task at hand.
 
 ---
 
@@ -111,8 +111,8 @@ Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an int
 
 **The Curveball**: *"Tell me about a time you turned failure into success."*
 
-- **Without Shadow**: Stammering, scrambling, stuck.
-- **With Shadow (Stealth Mode active)**:
+- **Without Nyx**: Stammering, scrambling, stuck.
+- **With Nyx (Stealth Mode active)**:
   - Real-time transcription catches every word, discreetly.
   - **STAR-method gold** pops up on your screen, invisible to others—customized to your resume and role.
   - You drop a story so smooth, they're taking notes.
@@ -125,14 +125,14 @@ Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an int
 
 **The Brainteaser**: *"Calculate the probability of 7 consecutive heads in all three coins tossed at same time in 100 coin tosses."*
 
-- **With Shadow (Stealth Mode is your superpower here)**:
-  1. `Alt+Shift+S` → **Proctoring Stealth Mode** activates. Shadow becomes a transparent, click-through overlay, invisible to screen recording and proctoring software.
+- **With Nyx (Stealth Mode is your superpower here)**:
+  1. `Alt+Shift+S` → **Proctoring Stealth Mode** activates. Nyx becomes a transparent, click-through overlay, invisible to screen recording and proctoring software.
   2. `Alt+V` → Vision Mode activates, ready to analyze.
   3. `Alt+S` → Silently screenshots the problem from the exam platform.
   4. `Alt+P` → Quantitative AI analyzes the problem in the background.
   5. Solutions appear ghosted on your screen—only you can see them.
   6. Submit answers confidently without ever switching tabs or alerting proctoring systems.
-  7. Control Shadow's window movements and scroll through suggestions using global hotkeys, all while the exam window remains active and focused.
+  7. Control Nyx's window movements and scroll through suggestions using global hotkeys, all while the exam window remains active and focused.
 
 *You solve complex problems with ease, leaving no trace.*
 
@@ -142,15 +142,15 @@ Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an int
 
 **The Puzzle**: Reverse-engineer a slow API call under pressure during a live coding session.
 
-- **Without Shadow**: Sweat-soaked guesswork.
-- **With Shadow (Stealth Mode ensuring seamless assistance)**:
+- **Without Nyx**: Sweat-soaked guesswork.
+- **With Nyx (Stealth Mode ensuring seamless assistance)**:
   1. `Alt+V` → Vision Mode ignites, ready for the code.
   2. `Alt+S` → Screenshot the problematic code or error message, discreetly.
   3. `Alt+P` → Vision AI unleashes its power, overlaying suggestions:
      - **Killer solutions** in JS, Python, Java, SQL, and more.
      - **Time complexity breakdowns** for optimal answers.
      - **Pro-level explanations** to articulate your thought process.
-     - All assistance is delivered via Shadow's overlay, invisible to screen sharing.
+     - All assistance is delivered via Nyx's overlay, invisible to screen sharing.
 
 *You code like a rockstar, navigating complex challenges with AI-powered insights, leaving them stunned.*
 
@@ -160,9 +160,9 @@ Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an int
 
 **The Beast**: *"Design a global payment system for millions."*
 
-- **With Shadow (Stealth Mode providing discreet guidance)**:
+- **With Nyx (Stealth Mode providing discreet guidance)**:
   - **Real-time transcription** catches the requirements as the interviewer speaks.
-  - Shadow provides quick analysis of constraints, goals, and trade-offs—visible only to you.
+  - Nyx provides quick analysis of constraints, goals, and trade-offs—visible only to you.
   - **API Design**: RESTful/GraphQL endpoint suggestions with detailed descriptions.
   - **Scalable architectures**—sharding, replication, microservices, oh my!
   - **Caching tricks** and **load balancing hacks**.
@@ -172,11 +172,11 @@ Clock's ticking. Stakes are high. Shadow's got you covered—whether it's an int
 
 ---
 
-## 🌟 Why Shadow Obliterates the Competition
+## 🌟 Why Nyx Obliterates the Competition
 
-Shadow doesn't just compete—it **crushes** subscription traps like **Interview Coder**, **Parakeet AI**, **LockedIn AI** and similars. Check the carnage:
+Nyx doesn't just compete—it **crushes** subscription traps like **Interview Coder**, **Parakeet AI**, **LockedIn AI** and similars. Check the carnage:
 
-| **Feature** | **Shadow** | **Interview Coder** | **Parakeet AI** | **LockedIn AI** |
+| **Feature** | **Nyx** | **Interview Coder** | **Parakeet AI** | **LockedIn AI** |
 |---|---|---|---|---|
 | **Cost** | 🆓 Free Forever | 💸 $25/month | 💸 Credits | 💸 Subscription |
 | **Vision AI** | ✅ Screenshots + Diagrams + Code | ❌ Nope | ❌ Nada | ❌ Never |
@@ -185,7 +185,7 @@ Shadow doesn't just compete—it **crushes** subscription traps like **Interview
 | **Scope** | ✅ Coding, System Design, Aptitude, Quantitative, Behavioral | ✅ Coding Only | ✅ Barely | ✅ Meh |
 | **Speed** | ⚡ **Fastest on Earth** — Cerebras (~2,000 tok/s) + Groq (~400 tok/s) = sub-second full answers | ❌ Slow (GPT latency) | ❌ Sluggish | ❌ Laggy |
 
-**Shadow's Knockout Punch**: Fastest inference in the game (Cerebras + Groq), totally invisible (screen-capture-proof stealth), and **$0 forever**. Competitors charge $25/month for slower, weaker, detectable tools. Shadow buries them all.
+**Nyx's Knockout Punch**: Fastest inference in the game (Cerebras + Groq), totally invisible (screen-capture-proof stealth), and **$0 forever**. Competitors charge $25/month for slower, weaker, detectable tools. Nyx buries them all.
 
 ---
 
@@ -193,20 +193,20 @@ Shadow doesn't just compete—it **crushes** subscription traps like **Interview
 
 ### 👻 **Stealth Mode: The Undetectable Edge**
 
-Shadow's Stealth Mode is engineered to provide powerful AI assistance while remaining **completely invisible and undetectable** to proctoring software, screen recording tools, and human observers. This is crucial for high-stakes online exams, remote interviews, and any situation requiring discreet support.
+Nyx's Stealth Mode is engineered to provide powerful AI assistance while remaining **completely invisible and undetectable** to proctoring software, screen recording tools, and human observers. This is crucial for high-stakes online exams, remote interviews, and any situation requiring discreet support.
 
-**What it is:** Stealth Mode transforms Shadow into a transparent, click-through overlay that seamlessly integrates with your workflow. It operates without creating new windows that could trigger alerts, and all interactions are managed via global hotkeys—meaning you **never need to switch focus** from your primary application.
+**What it is:** Stealth Mode transforms Nyx into a transparent, click-through overlay that seamlessly integrates with your workflow. It operates without creating new windows that could trigger alerts, and all interactions are managed via global hotkeys—meaning you **never need to switch focus** from your primary application.
 
 **Core Components:**
 
 | Component | What It Does |
 |-----------|-------------|
 | 🛡️ **Screen Capture Protection** | While hidden the window doesn't exist on the desktop at all — invisible to any screen recording, browser share, Zoom, Teams, Google Meet, and GoToMeeting; peeks (`Alt+Z`) are click-through and auto-hide |
-| 🤫 **Silent Operation** | Zero system sounds, zero focus stealing — type in your exam while Shadow overlays information |
+| 🤫 **Silent Operation** | Zero system sounds, zero focus stealing — type in your exam while Nyx overlays information |
 | 🔒 **Taskbar & Alt+Tab Immunity** | Hidden from taskbar, Alt+Tab switcher, and application monitoring via `WS_EX_TOOLWINDOW` |
-| 👻 **Ghost Mode** (`Alt+X`) | Click-through UI — interact with apps *underneath* Shadow while seeing its content |
-| ✨ **Focus-Free Control** | Show, hide, move, scroll — all via global hotkeys without ever clicking on Shadow |
-| 🚀 **Silent Launch** | `silent_run.vbs` starts Shadow with zero visible terminal windows |
+| 👻 **Ghost Mode** (`Alt+X`) | Click-through UI — interact with apps *underneath* Nyx while seeing its content |
+| ✨ **Focus-Free Control** | Show, hide, move, scroll — all via global hotkeys without ever clicking on Nyx |
+| 🚀 **Silent Launch** | `silent_run.vbs` starts Nyx with zero visible terminal windows |
 
 > 📖 **Full stealth guide:** [PROCTORING_STEALTH_GUIDE.md](PROCTORING_STEALTH_GUIDE.md)
 
@@ -217,7 +217,7 @@ Shadow's Stealth Mode is engineered to provide powerful AI assistance while rema
 When combined with Stealth Mode, Vision AI becomes even more potent:
 
 - **Multi-Screenshot Queue** — Capture **up to 4 screenshots** with `Alt+S`, building a queue of problems. Process the entire batch at once with `Alt+P` — perfect for multi-part exam questions or complex code spanning multiple files
-- **Auto Content-Type Detection** — Shadow automatically identifies whether a screenshot contains code, a diagram, a math problem, a database schema, or plain text — and adapts its analysis strategy accordingly
+- **Auto Content-Type Detection** — Nyx automatically identifies whether a screenshot contains code, a diagram, a math problem, a database schema, or plain text — and adapts its analysis strategy accordingly
 - **Instant Problem Analysis** — Screenshot questions from any platform (LeetCode, HackerRank, CodeSignal, Google Docs, PDF exams), process them, get solutions overlaid invisibly
 - **Multi-Language Code Solutions** — Python, Java, C++, JavaScript, TypeScript, SQL, Go, Rust, C#, and more — with syntax-highlighted answers
 - **System Architecture Understanding** — Analyzes architecture diagrams, UML, flowcharts — suggests optimizations, identifies bottlenecks, recommends design patterns
@@ -235,10 +235,10 @@ When combined with Stealth Mode, Vision AI becomes even more potent:
 
 - **Primary + Secondary Models** — Run two different AIs simultaneously (e.g., Cerebras for speed + Groq for vision). All processing happens invisibly
 - **Instant Model Switching** — `Alt+Q` (primary), `Alt+W` (secondary), `Alt+E` (auto-select fastest healthy provider) — swap AI strategies mid-interview without leaving your active window
-- **Auto-Failover System** — If one provider hits rate limits, Shadow auto-switches to the next key or provider. Zero downtime, zero manual intervention
-- **API Key Rotation** — Add multiple free keys per provider via `apiKeys` array — Shadow round-robins between them, multiplying your effective throughput
+- **Auto-Failover System** — If one provider hits rate limits, Nyx auto-switches to the next key or provider. Zero downtime, zero manual intervention
+- **API Key Rotation** — Add multiple free keys per provider via `apiKeys` array — Nyx round-robins between them, multiplying your effective throughput
 - **Multi-Provider Support** — Cerebras (fastest inference), Groq (fast + vision), Gemini (best vision accuracy), OpenRouter (gateway to 100+ models) — all free tiers
-- **Health Monitoring** — Shadow continuously monitors provider health and response times, auto-selecting the fastest available provider when you press `Alt+E`
+- **Health Monitoring** — Nyx continuously monitors provider health and response times, auto-selecting the fastest available provider when you press `Alt+E`
 - **Configurable Per-Session** — Choose different provider combinations for different interview types (e.g., Cerebras for behavioral, Gemini for system design with diagrams)
 
 ---
@@ -246,26 +246,26 @@ When combined with Stealth Mode, Vision AI becomes even more potent:
 ### 🎤 **Real-Time Voice Intelligence (Completely Stealthy)**
 
 - **Live Transcription** — Deepgram-powered, high-accuracy speech-to-text with continuous streaming. Captures both interviewer questions and your responses in real-time
-- **Context-Aware Coaching** — Shadow knows your resume, job description, target role, and the full conversation history. Every response is hyper-personalized to *you* and the specific question being asked
+- **Context-Aware Coaching** — Nyx knows your resume, job description, target role, and the full conversation history. Every response is hyper-personalized to *you* and the specific question being asked
 - **Conversation Memory** — Remembers the entire interview (configurable up to 20 exchanges) for cross-referencing past questions, detecting follow-ups, and maintaining consistent narrative
-- **Candidate Response Tracking** — Optionally tracks what you say so Shadow can provide follow-up suggestions, catch mistakes, and help you build on previous answers
+- **Candidate Response Tracking** — Optionally tracks what you say so Nyx can provide follow-up suggestions, catch mistakes, and help you build on previous answers
 - **Smart Audio Controls** — `Alt+M` to toggle mic mute, `Alt+U` for universal pause/resume of all AI processing — all without touching the mouse
-- **Auto-Reconnect** — If the Deepgram connection drops, Shadow automatically reconnects and resumes transcription seamlessly
+- **Auto-Reconnect** — If the Deepgram connection drops, Nyx automatically reconnects and resumes transcription seamlessly
 - **Full or Brief Answers** — Toggle between detailed, interview-ready responses and quick bullet-point hints via `GENERATE_FULL_ANSWERS` in `.env`
 
 ---
 
 ## 🏗️ Architecture
 
-This diagram illustrates Shadow's multi-layered architecture—designed for real-time performance, intelligence, and **unparalleled discretion through its Stealth Mode capabilities.**
+This diagram illustrates Nyx's multi-layered architecture—designed for real-time performance, intelligence, and **unparalleled discretion through its Stealth Mode capabilities.**
 
 <div align="center">
 
-![Shadow Operational Flow](flow.png)
+![Nyx Operational Flow](flow.png)
 
 </div>
 
-*The "Stealth & Privacy" layer in the OS Interaction component is key to Shadow's undetectable nature.*
+*The "Stealth & Privacy" layer in the OS Interaction component is key to Nyx's undetectable nature.*
 
 ### Key Components
 
@@ -288,18 +288,18 @@ This diagram illustrates Shadow's multi-layered architecture—designed for real
 
 ## ⌨️ The Control Room: Global Hotkeys for Stealth Operations
 
-Never leave the interview window. Control everything instantly with our ergonomic hotkey system, designed for maximum discretion and efficiency. **All hotkeys function seamlessly while Shadow is in Stealth Mode.**
+Never leave the interview window. Control everything instantly with our ergonomic hotkey system, designed for maximum discretion and efficiency. **All hotkeys function seamlessly while Nyx is in Stealth Mode.**
 
 | Category | Hotkey | Action | Stealth Utility |
 |:---|:---|:---|:---|
 | **Stealth & Window** | `Alt + Shift + S` | **Activate Proctoring Stealth Mode** | The master key for full undetectability |
-| | `Alt + Z` | Toggle window visibility | Show/hide Shadow for your eyes only |
-| | `Alt + X` | Toggle Ghost Mode (click-through) | Interact with apps underneath Shadow |
-| | `Alt + 1 / 2 / 3` | Set transparency (40% / 70% / 100%) | Adjust Shadow's visibility to your comfort |
-| **Window Movement** | `Alt + I` | Move window up | Position Shadow's overlay precisely |
-| | `Alt + J` | Move window down | Position Shadow's overlay precisely |
-| | `Alt + ←` | Move window left | Position Shadow's overlay precisely |
-| | `Alt + →` | Move window right | Position Shadow's overlay precisely |
+| | `Alt + Z` | Toggle window visibility | Show/hide Nyx for your eyes only |
+| | `Alt + X` | Toggle Ghost Mode (click-through) | Interact with apps underneath Nyx |
+| | `Alt + 1 / 2 / 3` | Set transparency (40% / 70% / 100%) | Adjust Nyx's visibility to your comfort |
+| **Window Movement** | `Alt + I` | Move window up | Position Nyx's overlay precisely |
+| | `Alt + J` | Move window down | Position Nyx's overlay precisely |
+| | `Alt + ←` | Move window left | Position Nyx's overlay precisely |
+| | `Alt + →` | Move window right | Position Nyx's overlay precisely |
 | **Content Scrolling** | `Alt + ↑` | Scroll up (hold for continuous) | Navigate AI suggestions within overlay |
 | | `Alt + ↓` | Scroll down (hold for continuous) | Navigate AI suggestions within overlay |
 | | `Home` | Jump to top (reading mode) | Quickly review earlier answers |
@@ -312,7 +312,7 @@ Never leave the interview window. Control everything instantly with our ergonomi
 | | `Alt + T` | Cycle vision model | Switch between Gemini/Groq vision |
 | **AI & Audio** | `Alt + Q` | Switch to primary model | Fastest model on demand |
 | | `Alt + W` | Switch to secondary model | Alternative AI personality |
-| | `Alt + E` | Auto-select best model | Let Shadow pick the fastest available |
+| | `Alt + E` | Auto-select best model | Let Nyx pick the fastest available |
 | | `Alt + M` | Toggle microphone mute | Control your audio input |
 | | `Alt + U` | Universal pause/resume AI | Instantly pause all AI processing |
 | | `Alt + O` | Reset interview session | Start fresh |
@@ -379,7 +379,7 @@ cp ai_providers.example.json ai_providers.json
 
 Open `ai_providers.json` and replace placeholder keys with your actual keys. You don't need all 4 providers — even a **single provider with one key works fine**.
 
-### Step 5 · Launch Shadow
+### Step 5 · Launch Nyx
 
 **Option A — Direct launch:**
 ```bash
@@ -396,7 +396,7 @@ run.bat
 ```
 silent_run.vbs
 ```
-> Double-click `silent_run.vbs` to launch Shadow with **zero visible terminal windows**. The entire startup process runs completely hidden — perfect for stealth situations.
+> Double-click `silent_run.vbs` to launch Nyx with **zero visible terminal windows**. The entire startup process runs completely hidden — perfect for stealth situations.
 
 ### Step 6 · Onboarding
 
@@ -413,11 +413,11 @@ silent_run.vbs
 
 ## 🔑 Obtaining API Keys (All Free!)
 
-Every provider Shadow supports offers **free tiers** that are more than enough for interview and exam use. No credit card required for any of them.
+Every provider Nyx supports offers **free tiers** that are more than enough for interview and exam use. No credit card required for any of them.
 
 ### 🎤 Deepgram (Required — Speech-to-Text Engine)
 
-Deepgram is the **core engine** that powers Shadow's real-time transcription. It listens to your microphone and the interviewer's audio, converting speech to text that gets fed to the AI for instant coaching responses. **Without Deepgram, Shadow can't hear the interview.**
+Deepgram is the **core engine** that powers Nyx's real-time transcription. It listens to your microphone and the interviewer's audio, converting speech to text that gets fed to the AI for instant coaching responses. **Without Deepgram, Nyx can't hear the interview.**
 
 | | Details |
 |---|---------|
@@ -472,7 +472,7 @@ OpenRouter acts as a **gateway** to multiple providers through a single API key.
 
 ### 💡 Why Use Multiple API Keys? (Free Reliability Hack)
 
-Shadow supports **multiple API keys per provider** via the `apiKeys` array in `ai_providers.json`:
+Nyx supports **multiple API keys per provider** via the `apiKeys` array in `ai_providers.json`:
 
 ```json
 "apiKeys": ["KEY_1", "KEY_2", "KEY_3"]
@@ -482,10 +482,10 @@ Shadow supports **multiple API keys per provider** via the `apiKeys` array in `a
 
 | Benefit | How It Works |
 |---------|-------------|
-| **Rate limit resilience** | Free tiers have per-key rate limits. Multiple keys = Shadow rotates between them, multiplying your throughput |
-| **Zero downtime** | If one key hits its limit, Shadow auto-switches to the next — you never notice |
+| **Rate limit resilience** | Free tiers have per-key rate limits. Multiple keys = Nyx rotates between them, multiplying your throughput |
+| **Zero downtime** | If one key hits its limit, Nyx auto-switches to the next — you never notice |
 | **No cost** | All providers above offer free keys. Create 2–3 accounts, add all keys — instant reliability |
-| **Auto-failover** | Shadow also fails over between *providers* (Cerebras → Groq → Gemini), not just keys |
+| **Auto-failover** | Nyx also fails over between *providers* (Cerebras → Groq → Gemini), not just keys |
 
 **A single key works perfectly fine** — multiple keys are optional but recommended for heavy use.
 
@@ -569,7 +569,7 @@ Created from `ai_providers.example.json`. **Not committed to git** — your keys
 
 ---
 
-## 💎 Who Rules with Shadow?
+## 💎 Who Rules with Nyx?
 
 ### **For Job Seekers (Using Stealth Mode for an Edge)**
 
@@ -690,27 +690,27 @@ SCROLL_INTERVAL_MS=70    # Higher = less frequent
 
 ## ⚖️ Fair Play, Big Wins
 
-Shadow's Stealth Mode is a powerful tool. It's designed to level the playing field and provide support—not to encourage dishonesty or misrepresentation.
+Nyx's Stealth Mode is a powerful tool. It's designed to level the playing field and provide support—not to encourage dishonesty or misrepresentation.
 
 ### 🚨 **Important Legal Notice**
 
-**BY USING SHADOW, INCLUDING ITS STEALTH MODE FEATURES, YOU ACKNOWLEDGE AND AGREE:**
+**BY USING NYX, INCLUDING ITS STEALTH MODE FEATURES, YOU ACKNOWLEDGE AND AGREE:**
 
 ### 📋 **User Responsibility**
 - **Full Responsibility**: Users are solely responsible for compliance with all applicable laws, regulations, company policies, and exam guidelines when using Stealth Mode
-- **Policy Review Required**: Review your target company's interview policies or exam rules *before* using Shadow
+- **Policy Review Required**: Review your target company's interview policies or exam rules *before* using Nyx
 - **Legal Compliance**: Comply with all local, state, federal, and international laws regarding privacy, recording, and technology use
 - **Professional Ethics**: Stealth Mode augments your abilities and confidence — it shouldn't misrepresent your fundamental skills
 
 ### ⚠️ **Risks & Limitations**
 - **Policy Violations**: Using Stealth Mode in violation of policies may result in disqualification, offer withdrawal, or legal consequences
-- **No Guarantees**: Shadow does not guarantee success, job offers, or career advancement
-- **Technical Reliability**: Issues may occur — don't solely rely on Shadow without backup plans
+- **No Guarantees**: Nyx does not guarantee success, job offers, or career advancement
+- **Technical Reliability**: Issues may occur — don't solely rely on Nyx without backup plans
 - **AI Limitations**: Validate AI responses — don't blindly rely on them
 
 ### 🎯 **Ethical Use**
-- **Enhancement, Not Deception**: Use Shadow to enhance your knowledge and confidence — not to fake competence
-- **Learning Tool**: Treat Shadow as an advanced study and performance aid
+- **Enhancement, Not Deception**: Use Nyx to enhance your knowledge and confidence — not to fake competence
+- **Learning Tool**: Treat Nyx as an advanced study and performance aid
 - **Honest Representation**: Maintain honesty about your capabilities
 - **Respect the Process**: Respect the integrity of interviews and exams
 
@@ -718,7 +718,7 @@ Shadow's Stealth Mode is a powerful tool. It's designed to level the playing fie
 
 ### 🤝 **Agreement**
 
-By downloading, installing, or using Shadow, you acknowledge that you have read, understood, and agree to comply with all terms and guidelines above.
+By downloading, installing, or using Nyx, you acknowledge that you have read, understood, and agree to comply with all terms and guidelines above.
 
 ---
 
@@ -748,10 +748,8 @@ This project is licensed under the **MIT License** — see [LICENSE](LICENSE) fo
 
 ---
 
-### 🏆 **Shadow: Victory Is Yours**
+### 🏆 **Nyx: Victory Is Yours**
 
-**Grab Shadow. Crush it. Today.**
+**Grab Nyx. Crush it. Today.**
 
-[⬆ Back to Top](#-shadow-your-ultimate-ally-for-interviews-and-examsbuilt-in-48-hours-free-forever)
-
-</div>
+[⬆ Back to Top](#-nyx-the-ai-they-cant-see-cant-detect-cant-stop)

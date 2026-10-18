@@ -2,7 +2,7 @@
 # This module contains the core logic for managing the application's desktop window.
 # Its primary responsibility is to apply the necessary settings to prevent the window
 # from being captured by screen recording or sharing software (e.g., Teams, Zoom, OBS).
-# This is the "stealth" feature of the Shadow application.
+# This is the "stealth" feature of the Nyx application.
 
 import os
 import ctypes
@@ -87,7 +87,7 @@ _user32.FindWindowW.restype               = wintypes.HWND
 _user32.FindWindowW.argtypes              = (wintypes.LPCWSTR, wintypes.LPCWSTR)
 
 # Window-title access (used to scrub the native title while hidden so a
-# hidden-window enumeration scan cannot match the name "Shadow")
+# hidden-window enumeration scan cannot match the name "Nyx")
 _user32.GetWindowTextLengthW.argtypes     = (wintypes.HWND,)
 _user32.GetWindowTextLengthW.restype      = ctypes.c_int
 _user32.GetWindowTextW.argtypes           = (wintypes.HWND, wintypes.LPWSTR, ctypes.c_int)
@@ -712,13 +712,13 @@ class WindowManager:
                         if _user32.IsWindowVisible(indicator['hwnd']) and indicator['hwnd'] not in self.hidden_screen_share_windows:
                             self.hide_screen_share_indicator(indicator['hwnd'], indicator.get('rect'))
 
-                    # Rising edge: a share just appeared while Shadow is on screen
+                    # Rising edge: a share just appeared while Nyx is on screen
                     # (e.g. the user shared before the interview formally started).
                     # Hide immediately — the interview-start hide would come later.
                     share_active = bool(indicators)
                     if share_active and not share_was_active:
                         if self.hwnd and _user32.IsWindowVisible(self.hwnd):
-                            print("🖥️ Screen share detected — hiding Shadow immediately (stealth)")
+                            print("🖥️ Screen share detected — hiding Nyx immediately (stealth)")
                             self.hide_window()
                     share_was_active = share_active
 
@@ -970,7 +970,7 @@ class WindowManager:
         """Blank the native window title while hidden.
 
         SW_HIDE windows remain enumerable — a proctoring scan that lists
-        hidden top-level windows would otherwise match the name "Shadow".
+        hidden top-level windows would otherwise match the name "Nyx".
         """
         if not self.is_windows or not self.hwnd or self._native_title_scrubbed:
             return
@@ -990,7 +990,7 @@ class WindowManager:
         if not self.is_windows or not self.hwnd or not self._native_title_scrubbed:
             return
         try:
-            _user32.SetWindowTextW(self.hwnd, self._hidden_native_title or "Shadow")
+            _user32.SetWindowTextW(self.hwnd, self._hidden_native_title or "Nyx")
             self._native_title_scrubbed = False
         except Exception as e:
             print(f"⚠️ Could not restore window title: {e}")
@@ -1015,7 +1015,7 @@ class WindowManager:
         print(f"⏱️ Peek auto-hide in {seconds:.0f}s (STEALTH_PEEK_SECONDS=0 to disable).")
 
     def hide_window(self) -> bool:
-        """Programmatically hide the Shadow window (stealth)."""
+        """Programmatically hide the Nyx window (stealth)."""
         if not self.is_windows or not self.hwnd:
             return False
         self._cancel_peek_timer()
@@ -1046,7 +1046,7 @@ class WindowManager:
         return True
 
     def show_window(self) -> bool:
-        """Show the Shadow window without focus change and without auto-hide (e.g. after interview ends)."""
+        """Show the Nyx window without focus change and without auto-hide (e.g. after interview ends)."""
         if not self.is_windows or not self.hwnd:
             return False
         self._cancel_peek_timer()
@@ -1089,7 +1089,7 @@ class WindowManager:
             self._restore_title()
             # Click-through while peeking: any click falls through to the app
             # behind, so the interview page NEVER receives a blur event.
-            # (Alt+X disables this manually if you need to click Shadow itself.)
+            # (Alt+X disables this manually if you need to click Nyx itself.)
             self.set_ghost_mode(True)
             print("✨ Window shown via global hotkey (stealth - no focus, click-through).")
             # Re-apply always-on-top state when showing the window
@@ -1565,8 +1565,8 @@ class WindowManager:
         
         # Ensure we have the handle before starting
         if not self.hwnd:
-            if not self.find_window_by_title("Shadow"):
-                 print("❌ Cannot start hotkey listener: Shadow window not found.")
+            if not self.find_window_by_title("Nyx"):
+                 print("❌ Cannot start hotkey listener: Nyx window not found.")
                  return
         
         listener_thread = Thread(target=self._start_hotkey_listener_thread, daemon=True)
@@ -1597,8 +1597,8 @@ def make_app_opaque() -> bool:
     return window_manager.make_opaque()
 
 def find_shadow_window() -> bool:
-    """Find and set Shadow window for transparency control"""
-    hwnd = window_manager.find_window_by_title("Shadow")
+    """Find and set Nyx window for transparency control"""
+    hwnd = window_manager.find_window_by_title("Nyx")
     return hwnd is not None
 
 def set_app_always_on_top(on_top: bool) -> bool:
@@ -1708,7 +1708,7 @@ def _find_own_window(title: str) -> Optional[int]:
 
 def apply_capture_protection(window):
     """
-    Applies hide-by-default stealth to the Shadow window.
+    Applies hide-by-default stealth to the Nyx window.
 
     Windows has no API for a window that is visible to the user but fully
     invisible in screen capture (WDA_EXCLUDEFROMCAPTURE renders a black
@@ -1739,12 +1739,12 @@ def apply_capture_protection(window):
     print(f"🔍 Method 1 (window._hwnd): {hex(hwnd) if hwnd else 'Not found'}")
 
     # --- Method 2: PID-filtered EnumWindows (up to ~1s of retries) ---
-    # FindWindowW matches ANY process's window titled "Shadow", so it can attach
-    # to an unrelated window (another app's Shadow-named dialog, etc). We only
+    # FindWindowW matches ANY process's window titled "Nyx", so it can attach
+    # to an unrelated window (another app's Nyx-named dialog, etc). We only
     # ever accept a top-level window owned by this process.
     if not hwnd:
         print("⚠️ Private attribute not found, enumerating this process's windows...")
-        title = window.title or "Shadow"
+        title = window.title or "Nyx"
         for attempt in range(10):
             time.sleep(0.1)
             hwnd = _find_own_window(title)
@@ -1857,7 +1857,7 @@ if __name__ == '__main__':
 
     # Create a pywebview window for testing purposes
     test_window = webview.create_window(
-        'Shadow Stealth Test',
+        'Nyx Stealth Test',
         html='<h1>This window should be black in screen recordings.</h1>',
         width=800,
         height=600

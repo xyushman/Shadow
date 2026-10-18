@@ -1,4 +1,4 @@
-// Hotkeys Module for Shadow
+// Hotkeys Module for Nyx
 // Provides keyboard shortcuts for transparency and other controls
 
 import { devLog } from './config.js';
