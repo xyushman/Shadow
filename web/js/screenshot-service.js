@@ -506,10 +506,12 @@ class ScreenshotService {
         console.log('🗑️ Screenshot removed from queue:', screenshotId);
     }
     
-    clearQueue() {
+    clearQueue(silent = false) {
         this.screenshotQueue = [];
         this.updateQueueUI();
-        this.showNotification('🗑️ Queue Cleared', 'All screenshots removed', 'warning');
+        if (!silent) {
+            this.showNotification('🗑️ Queue Cleared', 'All screenshots removed', 'warning');
+        }
         console.log('🗑️ Screenshot queue cleared');
     }
     
@@ -593,14 +595,14 @@ class ScreenshotService {
             if (result.success) {
                 // Note: Vision analysis display is handled by main.js WebSocket message handler
                 // to avoid duplicate display. We just handle UI feedback here.
-                
-                // Clear queue after successful processing
-                this.clearQueue();
                 this.showNotification('✅ Comprehensive Analysis Complete', 
                     `${screenshots.length} screenshots analyzed with 2 solution approaches`, 'success');
             } else {
                 this.showNotification('❌ Analysis Failed', result.error || 'Vision AI processing failed', 'error');
             }
+
+            // Always remove processed images from the queue afterwards.
+            this.clearQueue(true);
             
         } catch (error) {
             console.error('❌ Vision processing error:', error);

@@ -1777,7 +1777,9 @@ def apply_capture_protection(window):
     window_manager.set_window_handle(hwnd)
     window_manager.hide_from_taskbar()
     window_manager.set_always_on_top(True)
-    window_manager.start_screen_share_monitor()
+    # Screen-share indicator monitor is NOT needed in invisible mode: WDA_EXCLUDEFROMCAPTURE
+    # already excludes the window from capture, and hiding toast windows can cause
+    # flicker/instability. Only enable in hide-by-default/blackout modes.
     if success:
         print("✅ INVISIBLE STEALTH MODE ENABLED (Cluely-style)")
         print("   📌 Window stays visible to you; absent from screen shares/recordings")
