@@ -1,11 +1,13 @@
 import orjson
 import asyncio
+import time
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from openai import AsyncOpenAI, APIStatusError
 from core.config import settings
 from core.key_utils import usable_keys
 from core.prompts import get_interview_answer_prompt, get_quick_response_prompt
+from core.retry_utils import is_rate_limit_error, cooldown_seconds
 from services.context_manager import PersistentContextManager
 import threading
 
@@ -34,6 +36,8 @@ class LLMManager:
         self._key_index = 0
         self._key_lock = threading.Lock()
         self._request_count = 0
+        # key index -> monotonic time until which the key should be skipped
+        self._key_cooldowns: Dict[int, float] = {}
         
         try:
             self.client = AsyncOpenAI(base_url=base_url, api_key=self.api_key)
@@ -54,6 +58,36 @@ class LLMManager:
             self.client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
             self._request_count += 1
             print(f"🔑 Key rotation [{self.provider_name}]: using key index {self._key_index}/{len(self.api_keys)}")
+
+    def _activate_key(self, index: int):
+        """Switch to a specific key index and rebuild the client for it."""
+        if index == self._key_index and self.client is not None:
+            return
+        with self._key_lock:
+            self._key_index = index
+            self.api_key = self.api_keys[index]
+            self.client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+
+    def _next_available_key_index(self) -> int:
+        """Next key index (round-robin) that is not currently cooling down."""
+        now = time.monotonic()
+        count = len(self.api_keys)
+        for offset in range(1, count + 1):
+            candidate = (self._key_index + offset) % count
+            if self._key_cooldowns.get(candidate, 0.0) <= now:
+                return candidate
+        # Every key is cooling down; still return the next one.
+        return (self._key_index + 1) % count
+
+    def has_available_key(self) -> bool:
+        """True when at least one key is not currently rate-limited."""
+        now = time.monotonic()
+        return any(self._key_cooldowns.get(i, 0.0) <= now for i in range(len(self.api_keys)))
+
+    def _cool_down_current_key(self, exc: Exception, attempt: int):
+        wait = cooldown_seconds(exc, attempt)
+        self._key_cooldowns[self._key_index] = time.monotonic() + wait
+        print(f"⏳ Rate limited [{self.provider_name}/{self.model_name}] key #{self._key_index} — skipping for {wait:.1f}s")
 
     def set_context_manager(self, context_manager: PersistentContextManager):
         """Set the shared context manager"""
@@ -82,50 +116,55 @@ class LLMManager:
             self.error_count += 1
             return False
 
-    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None) -> Tuple[str, Dict[str, Any]]:
-        """Get AI answer with instant key rotation on any error — zero delay retries."""
+    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None,
+                            add_to_context: bool = True) -> Tuple[str, Dict[str, Any]]:
+        """Get an AI answer, rotating keys and skipping rate-limited ones.
+
+        ``add_to_context`` is False when the caller (MultiLLMManager) has already
+        recorded the question once, so provider/model fallbacks do not create
+        duplicate conversation entries.
+        """
         if not self.client:
             return "I'm sorry, the AI service is not available at this time.", {
                 "error": "No client available",
                 "provider": self.provider_name,
                 "model": self.model_name
             }
-        
+
         if not self.context_manager or not self.context_manager.ensure_context_available():
             return "I'm sorry, candidate context is not properly initialized.", {
                 "error": "Context not available",
                 "provider": self.provider_name,
                 "model": self.model_name
             }
-        
+
         # Add question to conversation history (once, before retry loop)
-        self.context_manager.add_conversation_exchange(question)
-        
+        if add_to_context:
+            self.context_manager.add_conversation_exchange(question)
+
         # Generate prompt with persistent context.
         # GENERATE_FULL_ANSWERS=false routes to the short-form prompt.
         if settings.GENERATE_FULL_ANSWERS:
             prompt = get_interview_answer_prompt(question, self.context_manager, response_style=response_style)
         else:
             prompt = get_quick_response_prompt(question, self.context_manager)
-        
+
         print(f"🎯 Processing with {self.provider_name}-{self.model_name}: '{question[:100]}...'")
-        
-        # Proactive round-robin: start every request on the next key so
+
+        # Proactive round-robin: start every request on the next available key so
         # multiple keys (e.g. several Gemini keys) share rate limits evenly.
         if len(self.api_keys) > 1:
-            self._rotate_key()
+            self._activate_key(self._next_available_key_index())
 
-        # Try all available keys — instant retry on any error
-        max_attempts = len(self.api_keys)
+        # Try all available keys. Rate-limited keys are put on cooldown and
+        # skipped; if every key is cooling down the call fails fast so the
+        # caller can fall back to another model/provider instead of sleeping.
+        max_attempts = max(len(self.api_keys), 1)
         last_error = None
-        
+        rate_limited = False
+
         for attempt in range(max_attempts):
             try:
-                # Rotate key for each attempt (first attempt uses current key)
-                if attempt > 0:
-                    self._rotate_key()
-                    print(f"🔄 Instant retry attempt {attempt+1}/{max_attempts} with next key for {self.provider_name}")
-                
                 # Build API params
                 api_params = {
                     "messages": [{"role": "user", "content": prompt}],
@@ -153,7 +192,7 @@ class LLMManager:
                         async for chunk in await self.client.chat.completions.create(**api_params):
                             if not streaming_active:
                                 break
-                            
+
                             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                                 content_chunk = chunk.choices[0].delta.content
                                 full_answer += content_chunk
@@ -178,13 +217,13 @@ class LLMManager:
                         timeout=30.0
                     )
                     answer = chat_completion.choices[0].message.content.strip()
-                
+
                 # Success! Add AI response and return
                 self.context_manager.add_ai_response(answer, "normal")
                 self.is_healthy = True
                 self.error_count = 0
                 self.last_success_time = datetime.now()
-                
+
                 return answer, {
                     "success": True,
                     "provider": self.provider_name,
@@ -193,23 +232,35 @@ class LLMManager:
                     "attempt": attempt + 1,
                     "response_time": datetime.now().isoformat()
                 }
-                
+
             except Exception as e:
                 last_error = e
                 err_str = str(e)[:100]
+                if is_rate_limit_error(e):
+                    rate_limited = True
+                    self._cool_down_current_key(e, attempt + 1)
                 print(f"⚡ Key #{self._key_index} failed for {self.provider_name}: {err_str}")
-                # Continue to next key immediately — no delay
+                # Try the next available key immediately.
+                if attempt + 1 < max_attempts and len(self.api_keys) > 1:
+                    self._activate_key(self._next_available_key_index())
                 continue
-        
+
         # All keys exhausted
-        error_msg = f"All {max_attempts} keys failed for {self.provider_name}. Last error: {str(last_error)[:100]}"
         self.is_healthy = False
         self.last_error = str(last_error)
         self.error_count += 1
-        print(f"🚨 ALL KEYS EXHAUSTED: {self.provider_name}-{self.model_name}")
-        
+        if rate_limited:
+            error_msg = (f"Rate limit reached for {self.provider_name} ({self.model_name}). "
+                         f"All {max_attempts} key(s) are cooling down.")
+            print(f"⏳ ALL KEYS RATE LIMITED: {self.provider_name}-{self.model_name}")
+        else:
+            error_msg = f"All {max_attempts} keys failed for {self.provider_name}. Last error: {str(last_error)[:100]}"
+            print(f"🚨 ALL KEYS EXHAUSTED: {self.provider_name}-{self.model_name}")
+
         return error_msg, {
+            "success": False,
             "error": "all_keys_failed",
+            "rate_limited": rate_limited,
             "attempts": max_attempts,
             "provider": self.provider_name,
             "model": self.model_name
@@ -246,6 +297,10 @@ class MultiLLMManager:
         self.auto_switch_enabled = True
         self.health_check_interval = 300  # 5 minutes
         self.last_health_check = None
+        # Per-preset alternate models of the same provider. Used when the
+        # selected model is rate-limited (e.g. Gemini 3.8 Flash's low RPD).
+        self.model_fallbacks: Dict[str, List[LLMManager]] = {}
+        self._provider_configs: Dict[str, Dict[str, Any]] = {}
         
     def load_configuration(self, primary_config: Dict[str, str], secondary_config: Optional[Dict[str, str]] = None):
         """Load primary and optional secondary configurations"""
@@ -253,13 +308,19 @@ class MultiLLMManager:
             # Load providers from JSON using high-performance orjson
             with open("ai_providers.json", "rb") as f:
                 providers_config = orjson.loads(f.read())
-            
+
+            self._provider_configs = {
+                p["name"]: p for p in providers_config if isinstance(p, dict) and p.get("name")
+            }
+
             # Setup primary provider
             primary_provider_config = next((p for p in providers_config
                                           if p["name"] == primary_config["provider"]), None)
             
             if not primary_provider_config:
                 raise ValueError(f"Primary provider '{primary_config['provider']}' not found in configuration")
+
+            secondary_provider_config = None
             
             # --- Primary Provider Setup ---
             primary_model_config = self._get_model_config(primary_provider_config, primary_config["model"])
@@ -318,7 +379,19 @@ class MultiLLMManager:
                 "description": "Auto-Select Best Available Model",
                 "priority": 0
             }
-            
+
+            # Build alternate-model fallbacks for each configured preset so a
+            # rate-limited model (low RPD) can fail over within its provider.
+            self.model_fallbacks = {}
+            if "primary" in self.providers:
+                self.model_fallbacks["primary"] = self._build_model_fallbacks(
+                    primary_provider_config, self.providers["primary"].model_name
+                )
+            if "secondary" in self.providers and secondary_provider_config:
+                self.model_fallbacks["secondary"] = self._build_model_fallbacks(
+                    secondary_provider_config, self.providers["secondary"].model_name
+                )
+
             print(f"✅ MultiLLMManager initialized with {len(self.providers)} providers")
             print(f"   📋 Available presets: {list(self.presets.keys())}")
             
@@ -336,6 +409,42 @@ class MultiLLMManager:
             if isinstance(model, dict) and model.get("modelName") == model_identifier:
                 return model
         raise ValueError(f"Model '{model_identifier}' not found for provider '{provider_config['name']}'")
+
+    def _build_model_fallbacks(self, provider_config: Dict[str, Any], current_model: str) -> List[LLMManager]:
+        """Create managers for every other model of the same provider.
+
+        The order follows ``models`` in ai_providers.json (flagship first, then
+        lighter/higher-quota models), which is exactly what we want when the
+        selected model runs out of requests.
+        """
+        managers: List[LLMManager] = []
+        seen = {current_model}
+        for model in provider_config.get("models", []):
+            if isinstance(model, dict):
+                model_name = model.get("modelName")
+                request_params = model.get("requestParams")
+            else:
+                model_name = model
+                request_params = None
+            if not model_name or model_name in seen:
+                continue
+            seen.add(model_name)
+            try:
+                manager = LLMManager(
+                    provider_name=provider_config["name"],
+                    base_url=provider_config["baseURL"],
+                    api_key=provider_config.get("apiKey", ""),
+                    model_name=model_name,
+                    request_params=request_params,
+                    api_keys=provider_config.get("apiKeys")
+                )
+                manager.set_context_manager(self.shared_context)
+                managers.append(manager)
+            except Exception as e:
+                print(f"⚠️ Could not build fallback model '{model_name}': {e}")
+        if managers:
+            print(f"🧩 {provider_config['name']}: {len(managers)} fallback model(s) available")
+        return managers
 
     def initialize_candidate_context(self, onboarding_data: Dict[str, Any]):
         """Initialize shared candidate context"""
@@ -437,49 +546,87 @@ class MultiLLMManager:
         return {"key": "unknown", "provider": "Unknown", "model": "Unknown", "description": "Unknown"}
 
     async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None) -> Tuple[str, Dict[str, Any]]:
-        """Handles AI answer generation with fallback, with optional streaming"""
+        """Generate an answer with provider and model-level fallback.
+
+        Order: the active preset's model, that provider's alternate models, the
+        other configured preset, then its alternate models. Streaming is only
+        used for the very first attempt so a fallback answer is never merged
+        into partial output from a failed stream.
+        """
         if not self.providers:
             return "No AI providers are configured.", {"error": "no_providers"}
-        
-        # Try the active provider first
+
+        # Record the question once, so provider/model fallbacks do not each add
+        # a duplicate conversation entry.
+        if self.shared_context and self.shared_context.ensure_context_available():
+            self.shared_context.add_conversation_exchange(question)
+
+        preset_order = []
         if self.active_preset_key in self.providers:
-            manager = self.providers[self.active_preset_key]
-            answer, result_info = await manager.get_ai_answer(question, stream_callback, response_style)
-            
-            # If successful, return the answer
-            if result_info.get("success"):
-                preset_info = self.get_current_preset_info()
-                result_info["preset_used"] = preset_info
-                return answer, result_info
-            
-            print(f"⚠️ Active provider {self.active_preset_key} failed, attempting fallback...")
-        
-        # Try fallback providers (disable streaming for fallback to avoid confusion)
-        for fallback_preset in self.fallback_order:
-            if fallback_preset != self.active_preset_key and fallback_preset in self.providers:
-                print(f"🔄 Attempting fallback to {fallback_preset}...")
-                
-                manager = self.providers[fallback_preset]
-                # Don't use streaming for fallback
-                answer, result_info = await manager.get_ai_answer(question, None, response_style)
-                
+            preset_order.append(self.active_preset_key)
+        preset_order.extend(
+            preset for preset in self.fallback_order
+            if preset != self.active_preset_key and preset in self.providers
+        )
+        if not preset_order:
+            preset_order = list(self.providers.keys())
+
+        original_preset = self.active_preset_key
+        stream_used = False
+        saw_rate_limit = False
+
+        for preset_key in preset_order:
+            manager = self.providers[preset_key]
+
+            # Build the attempt order for this preset: selected model first
+            # (unless every key is cooling down), then alternate models.
+            candidates: List[Tuple[LLMManager, bool]] = []
+            if manager.has_available_key():
+                candidates.append((manager, False))
+            else:
+                print(f"⏭️ Skipping {manager.provider_name}/{manager.model_name} — all keys rate limited")
+
+            for fallback in self.model_fallbacks.get(preset_key, []):
+                if fallback.has_available_key():
+                    candidates.append((fallback, True))
+
+            for candidate, is_model_fallback in candidates:
+                callback = stream_callback if (not stream_used and not is_model_fallback) else None
+                answer, result_info = await candidate.get_ai_answer(
+                    question, callback, response_style, add_to_context=False
+                )
+                stream_used = True
+
                 if result_info.get("success"):
-                    # Update active preset to the working one
-                    old_preset = self.active_preset_key
-                    self.active_preset_key = fallback_preset
-                    
-                    preset_info = self.get_current_preset_info()
-                    result_info["preset_used"] = preset_info
-                    result_info["fallback_used"] = True
-                    result_info["original_preset"] = old_preset
-                    
-                    print(f"✅ Fallback successful, switched to {fallback_preset}")
+                    self.active_preset_key = preset_key
+                    info = self.get_current_preset_info()
+                    if is_model_fallback:
+                        info = {
+                            "key": preset_key,
+                            "provider": candidate.provider_name,
+                            "model": candidate.model_name,
+                            "description": f"{candidate.provider_name} ({candidate.model_name}) model fallback",
+                            "priority": info.get("priority", 0),
+                        }
+                        result_info["model_fallback"] = True
+                        result_info["rate_limited_primary"] = saw_rate_limit
+                    result_info["preset_used"] = info
+                    result_info["fallback_used"] = (preset_key != original_preset) or is_model_fallback
+                    if result_info["fallback_used"]:
+                        result_info["original_preset"] = original_preset
+                        print(f"✅ Answer served by fallback: {candidate.provider_name}/{candidate.model_name}")
                     return answer, result_info
-        
-        # All providers failed
+
+                reason = "rate limited" if result_info.get("rate_limited") else "failed"
+                if result_info.get("rate_limited"):
+                    saw_rate_limit = True
+                print(f"⚠️ {candidate.provider_name}/{candidate.model_name} {reason}; trying next option...")
+
+        # All providers and models failed
         error_msg = "All AI providers are currently unavailable. Please try again in a moment."
         return error_msg, {
             "error": "all_providers_failed",
+            "rate_limited": saw_rate_limit,
             "attempted_providers": list(self.providers.keys())
         }
 
