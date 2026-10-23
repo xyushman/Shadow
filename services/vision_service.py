@@ -3,11 +3,13 @@ import asyncio
 import base64
 import hashlib
 import threading
+import time
 from typing import Dict, List, Optional, Tuple, Any
 from datetime import datetime
 from openai import AsyncOpenAI, APIStatusError
 from core.config import settings
 from core.key_utils import usable_keys
+from core.retry_utils import is_rate_limit_error, cooldown_seconds
 
 
 def dedupe_screenshots(screenshots: List[Any]) -> List[Any]:
@@ -50,6 +52,8 @@ class VisionManager:
         self._key_index = 0
         self._key_lock = threading.Lock()
         self._request_count = 0
+        # key index -> monotonic time until which the key should be skipped
+        self._key_cooldowns: Dict[int, float] = {}
         
         try:
             self.client = AsyncOpenAI(base_url=base_url, api_key=self.api_key)
@@ -70,6 +74,35 @@ class VisionManager:
             self.client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
             self._request_count += 1
             print(f"🔑 Vision key rotation [{self.provider_name}]: using key index {self._key_index}/{len(self.api_keys)}")
+
+    def _activate_key(self, index: int):
+        """Switch to a specific key index and rebuild the client for it."""
+        if index == self._key_index and self.client is not None:
+            return
+        with self._key_lock:
+            self._key_index = index
+            self.api_key = self.api_keys[index]
+            self.client = AsyncOpenAI(base_url=self.base_url, api_key=self.api_key)
+
+    def _next_available_key_index(self) -> int:
+        """Next key index (round-robin) that is not currently cooling down."""
+        now = time.monotonic()
+        count = len(self.api_keys)
+        for offset in range(1, count + 1):
+            candidate = (self._key_index + offset) % count
+            if self._key_cooldowns.get(candidate, 0.0) <= now:
+                return candidate
+        return (self._key_index + 1) % count
+
+    def has_available_key(self) -> bool:
+        """True when at least one key is not currently rate-limited."""
+        now = time.monotonic()
+        return any(self._key_cooldowns.get(i, 0.0) <= now for i in range(len(self.api_keys)))
+
+    def _cool_down_current_key(self, exc: Exception, attempt: int):
+        wait = cooldown_seconds(exc, attempt)
+        self._key_cooldowns[self._key_index] = time.monotonic() + wait
+        print(f"⏳ Vision rate limited [{self.provider_name}/{self.model_name}] key #{self._key_index} — skipping for {wait:.1f}s")
 
     def set_context_manager(self, context_manager):
         """Set the shared context manager"""
@@ -99,7 +132,7 @@ class VisionManager:
             return False
 
     async def analyze_screenshots(self, prompt: str, screenshots: List[str], languages: List[str] = None) -> Tuple[str, Dict[str, Any]]:
-        """Analyze screenshots with instant key rotation on any error — zero delay retries."""
+        """Analyze screenshots, rotating keys and skipping rate-limited ones."""
         if not self.client:
             return "I'm sorry, the vision AI service is not available at this time.", {
                 "success": False,
@@ -120,22 +153,20 @@ class VisionManager:
         
         print(f"🔍 Analyzing {len(screenshots)} screenshots with {self.provider_name}-{self.model_name}")
         
-        # Proactive round-robin: start every request on the next key so
+        # Proactive round-robin: start every request on the next available key so
         # multiple keys (e.g. several Gemini keys) share rate limits evenly.
         if len(self.api_keys) > 1:
-            self._rotate_key()
+            self._activate_key(self._next_available_key_index())
 
-        # Try all available keys — instant retry on any error
-        max_attempts = len(self.api_keys)
+        # Try all available keys. Rate-limited keys are put on cooldown and
+        # skipped; if every key is cooling down the call fails fast so the
+        # caller can fall back to another vision model/provider.
+        max_attempts = max(len(self.api_keys), 1)
         last_error = None
+        rate_limited = False
         
         for attempt in range(max_attempts):
             try:
-                # Rotate key for each attempt (first attempt uses current key)
-                if attempt > 0:
-                    self._rotate_key()
-                    print(f"🔄 Vision instant retry attempt {attempt+1}/{max_attempts} with next key for {self.provider_name}")
-                
                 # Build API params
                 api_params = {
                     "messages": [{"role": "user", "content": content}],
@@ -184,20 +215,31 @@ class VisionManager:
             except Exception as e:
                 last_error = e
                 err_str = str(e)[:100]
+                if is_rate_limit_error(e):
+                    rate_limited = True
+                    self._cool_down_current_key(e, attempt + 1)
                 print(f"⚡ Vision key #{self._key_index} failed for {self.provider_name}: {err_str}")
-                # Continue to next key immediately — no delay
+                # Try the next available key immediately.
+                if attempt + 1 < max_attempts and len(self.api_keys) > 1:
+                    self._activate_key(self._next_available_key_index())
                 continue
         
         # All keys exhausted
-        error_msg = f"All {max_attempts} vision keys failed for {self.provider_name}. Last error: {str(last_error)[:100]}"
         self.is_healthy = False
         self.last_error = str(last_error)
         self.error_count += 1
-        print(f"🚨 ALL VISION KEYS EXHAUSTED: {self.provider_name}-{self.model_name}")
+        if rate_limited:
+            error_msg = (f"Rate limit reached for vision model {self.provider_name} ({self.model_name}). "
+                         f"All {max_attempts} key(s) are cooling down.")
+            print(f"⏳ ALL VISION KEYS RATE LIMITED: {self.provider_name}-{self.model_name}")
+        else:
+            error_msg = f"All {max_attempts} vision keys failed for {self.provider_name}. Last error: {str(last_error)[:100]}"
+            print(f"🚨 ALL VISION KEYS EXHAUSTED: {self.provider_name}-{self.model_name}")
         
         return error_msg, {
             "success": False,
             "error": "all_keys_failed",
+            "rate_limited": rate_limited,
             "attempts": max_attempts,
             "provider": self.provider_name,
             "model": self.model_name,
@@ -223,6 +265,7 @@ class VisionService:
         self.vision_managers: Dict[str, VisionManager] = {}
         self.active_vision_providers: Dict[str, VisionManager] = {}
         self.context_manager = None
+        self._provider_configs: Dict[str, Dict[str, Any]] = {}
 
     def set_context_manager(self, context_manager):
         """Set the shared context manager for all vision managers"""
@@ -234,6 +277,7 @@ class VisionService:
     def load_vision_providers(self, primary_config: Optional[Dict] = None, secondary_config: Optional[Dict] = None) -> bool:
         """Load active vision providers based on user selection."""
         self.active_vision_providers = {}
+        self._load_provider_configs()
         
         if primary_config and primary_config.get('provider') and primary_config.get('model'):
             manager = self._create_vision_manager(primary_config['provider'], primary_config['model'])
@@ -248,29 +292,51 @@ class VisionService:
         print(f"✅ VisionService configured with {len(self.active_vision_providers)} active vision models.")
         return len(self.active_vision_providers) > 0
 
+    def _load_provider_configs(self):
+        """Cache all provider entries from ai_providers.json for fallback lookups."""
+        try:
+            with open("ai_providers.json", "rb") as f:
+                providers = orjson.loads(f.read())
+            self._provider_configs = {
+                p["name"]: p for p in providers if isinstance(p, dict) and p.get("name")
+            }
+        except Exception as e:
+            print(f"⚠️ VisionService could not load provider configs: {e}")
+            self._provider_configs = {}
+
     def _create_vision_manager(self, provider_name: str, model_name: str) -> Optional[VisionManager]:
         """Create and return a vision manager for a given provider and model."""
         try:
-            with open("ai_providers.json", "rb") as f:
-                providers_config = orjson.loads(f.read())
+            if not self._provider_configs:
+                self._load_provider_configs()
 
-            for provider_config in providers_config:
-                if provider_config["name"] == provider_name:
-                    # Find the model configuration, supporting both string and dict formats
-                    model_config = self._get_vision_model_config(provider_config, model_name)
-                    
-                    manager = VisionManager(
-                        provider_name=provider_name,
-                        base_url=provider_config["baseURL"],
-                        api_key=provider_config.get("apiKey", ""),
-                        model_name=model_config["modelName"],
-                        request_params=model_config.get("requestParams"),
-                        api_keys=provider_config.get("apiKeys")
-                    )
-                    if self.context_manager:
-                        manager.set_context_manager(self.context_manager)
-                    return manager
-            return None
+            provider_config = self._provider_configs.get(provider_name)
+            if not provider_config:
+                # Fallback to reading the file directly if cache missed
+                with open("ai_providers.json", "rb") as f:
+                    providers_config = orjson.loads(f.read())
+                for pc in providers_config:
+                    if isinstance(pc, dict) and pc.get("name") == provider_name:
+                        provider_config = pc
+                        break
+
+            if not provider_config:
+                return None
+
+            # Find the model configuration, supporting both string and dict formats
+            model_config = self._get_vision_model_config(provider_config, model_name)
+
+            manager = VisionManager(
+                provider_name=provider_name,
+                base_url=provider_config["baseURL"],
+                api_key=provider_config.get("apiKey", ""),
+                model_name=model_config["modelName"],
+                request_params=model_config.get("requestParams"),
+                api_keys=provider_config.get("apiKeys")
+            )
+            if self.context_manager:
+                manager.set_context_manager(self.context_manager)
+            return manager
         except Exception as e:
             print(f"❌ Failed to create vision manager for {provider_name}: {e}")
             return None
@@ -292,22 +358,56 @@ class VisionService:
                 return manager
         
         # Fallback to creating a new one if not found in active
-        print(f"⚠️ Vision manager for {provider_name} - {model_name} not found in active providers. Creating on-the-fly.")
         return self._create_vision_manager(provider_name, model_name)
+
+    def _vision_model_names(self, provider_config: Dict[str, Any]) -> List[str]:
+        names = []
+        for model in provider_config.get("visionModels", []) or []:
+            if isinstance(model, str):
+                names.append(model)
+            elif isinstance(model, dict) and model.get("modelName"):
+                names.append(model.get("modelName"))
+        return names
+
+    def _vision_candidates(self, provider_name: str, model_name: str) -> List[Tuple[str, str]]:
+        seen = set()
+        ordered: List[Tuple[str, str]] = []
+
+        def add(p: str, m: str):
+            if not p or not m:
+                return
+            key = (p, m)
+            if key in seen:
+                return
+            seen.add(key)
+            ordered.append(key)
+
+        if not self._provider_configs:
+            self._load_provider_configs()
+
+        add(provider_name, model_name)
+
+        # Other vision models of the requested provider first.
+        cfg = self._provider_configs.get(provider_name)
+        if cfg:
+            for m in self._vision_model_names(cfg):
+                add(provider_name, m)
+
+        # Other active vision providers (e.g. secondary).
+        for mgr in self.active_vision_providers.values():
+            add(mgr.provider_name, mgr.model_name)
+
+        # Vision models from every other configured provider.
+        for pname, pcfg in self._provider_configs.items():
+            for m in self._vision_model_names(pcfg):
+                add(pname, m)
+
+        return ordered
     
     async def analyze_coding_problem(self, provider_name: str, model_name: str, 
                                    screenshots: List[str], languages: List[str] = None) -> Tuple[str, Dict[str, Any]]:
-        """Analyze coding problem screenshots with comprehensive prompting"""
-        
-        vision_manager = self.get_vision_manager(provider_name, model_name)
-        if not vision_manager:
-            return f"Vision model {provider_name} - {model_name} not available.", {
-                "success": False,
-                "error": "vision_model_not_found",
-                "provider": provider_name,
-                "model": model_name
-            }
-        
+        """Analyze coding problem screenshots with fallback across vision models/providers."""
+
         # Generate comprehensive coding prompt
         prompt = self.generate_coding_analysis_prompt(languages)
         # Adjust vision prompt hint based on session type / interview_type from context
@@ -318,8 +418,58 @@ class VisionService:
                 prompt = f"Session type: {itype}. Adapt analysis accordingly.\n\n" + prompt
         except Exception:
             pass
-        # Perform vision analysis
-        return await vision_manager.analyze_screenshots(prompt, screenshots, languages)
+
+        candidates = self._vision_candidates(provider_name, model_name)
+        last_analysis = ""
+        last_info: Dict[str, Any] = {
+            "success": False,
+            "error": "vision_model_not_found",
+            "provider": provider_name,
+            "model": model_name,
+            "screenshot_count": len(screenshots)
+        }
+
+        for idx, (cand_provider, cand_model) in enumerate(candidates):
+            manager = self.get_vision_manager(cand_provider, cand_model)
+            if not manager:
+                continue
+            if not manager.has_available_key():
+                print(f"⏭️ Skipping vision {cand_provider}/{cand_model} — all keys rate limited")
+                continue
+
+            try:
+                analysis, info = await manager.analyze_screenshots(prompt, screenshots, languages)
+            except Exception as e:
+                print(f"❌ Vision call failed for {cand_provider}/{cand_model}: {e}")
+                last_info = {
+                    "success": False,
+                    "error": str(e),
+                    "provider": cand_provider,
+                    "model": cand_model,
+                    "screenshot_count": len(screenshots)
+                }
+                last_analysis = str(e)
+                continue
+
+            last_analysis = analysis
+            last_info = info
+            if info.get("success"):
+                if (cand_provider, cand_model) != (provider_name, model_name):
+                    info["vision_fallback"] = True
+                if idx > 0:
+                    print(f"✅ Vision answer served by fallback: {cand_provider}/{cand_model}")
+                return analysis, info
+
+            print(f"⚠️ Vision {cand_provider}/{cand_model} failed; trying next option...")
+
+        # All candidates failed — return the last error.
+        error_msg = last_analysis if last_analysis else f"Vision model {provider_name} - {model_name} not available."
+        result = dict(last_info)
+        result.setdefault("success", False)
+        result["screenshot_count"] = len(screenshots)
+        result["provider"] = last_info.get("provider", provider_name)
+        result["model"] = last_info.get("model", model_name)
+        return error_msg, result
     
     def generate_coding_analysis_prompt(self, languages: List[str] = None) -> str:
         """Generate a comprehensive prompt for analyzing screenshots, capable of handling coding problems, MCQs, or a mix."""
