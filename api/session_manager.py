@@ -41,6 +41,10 @@ class InterviewSession:
         # request getDisplayMedia/getUserMedia.
         self.audio_capture = None
         self.native_audio_active: bool = False
+        # Deepgram diarization numbers speakers arbitrarily. Map the first
+        # voice to the interviewer and the second to the candidate so both the
+        # UI and the answer logic agree on who said what.
+        self._speaker_roles: Dict[int, str] = {}
 
     def _touch(self):
         """Update last activity time."""
@@ -66,6 +70,8 @@ class InterviewSession:
         self._touch()
         print(f"🎬 Session {self.session_id}: Starting interview...")
         try:
+            self._speaker_roles = {}
+            self.transcript_buffer = ""
             primary_provider_config = payload.get('aiProvider')
             secondary_provider_config = payload.get('aiSecondaryProvider')
             primary_vision_config = payload.get('visionProvider')
@@ -259,6 +265,7 @@ class InterviewSession:
         self._touch()
         print(f"🔄 Session {self.session_id}: Resetting interview context...")
         self.transcript_buffer = ""
+        self._speaker_roles = {}
         if self.silence_timer:
             self.silence_timer.cancel()
         
@@ -375,35 +382,55 @@ class InterviewSession:
                 await self._send_json("preset_switched", {"success": True, **result})
         await self._answer_question(question, source="regenerate")
 
+    def _role_for_speaker(self, speaker: int) -> str:
+        """Assign stable roles to diarized voices (first heard = interviewer)."""
+        try:
+            speaker = int(speaker)
+        except (TypeError, ValueError):
+            speaker = 0
+        if speaker not in self._speaker_roles:
+            self._speaker_roles[speaker] = (
+                "interviewer" if not self._speaker_roles else "candidate"
+            )
+        return self._speaker_roles[speaker]
+
     async def on_transcript(self, data):
-        """Callback from Deepgram. Handles transcript logic and silence detection."""
+        """Callback from Deepgram: label the speaker and buffer questions."""
         if self.state.get("is_universally_muted"):
             return
 
         self._touch()
-        await self._send_json("transcript_update", data)
-
         transcript = data.get('transcript', '').strip()
         is_final = data.get('is_final', False)
+        role = self._role_for_speaker(data.get('speaker', 0))
+        data['role'] = role
+        await self._send_json("transcript_update", data)
 
-        if transcript:
-            if self.silence_timer:
-                self.silence_timer.cancel()
-            
-            async def delayed_processing():
-                await asyncio.sleep(1.5)
-                await self._process_aggregated_transcript()
-            
-            self.silence_timer = asyncio.create_task(delayed_processing())
+        if not transcript:
+            return
 
-        speaker = data.get('speaker')
-        should_process = self.state.get("is_muted") or self.state.get("process_all_speakers") or (speaker == 0)
-
-        if is_final and should_process:
-            self.transcript_buffer = (self.transcript_buffer + " " + transcript).strip()
-        elif is_final and not should_process:
-            if self.llm_manager:
+        # Only interviewer speech triggers an answer. Candidate speech is kept
+        # in context as the user's own response.
+        if role == "candidate":
+            if is_final and self.llm_manager:
                 self.llm_manager.process_candidate_response(transcript)
+            return
+
+        if not self.state.get("auto_mode_enabled", True):
+            self.last_question = transcript if is_final else self.last_question
+            return
+
+        if self.silence_timer:
+            self.silence_timer.cancel()
+
+        async def delayed_processing():
+            await asyncio.sleep(1.5)
+            await self._process_aggregated_transcript()
+
+        self.silence_timer = asyncio.create_task(delayed_processing())
+
+        if is_final:
+            self.transcript_buffer = (self.transcript_buffer + " " + transcript).strip()
 
     async def _start_native_audio(self):
         """Starts backend mic + loopback capture so the browser stays prompt-free.

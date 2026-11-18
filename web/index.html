@@ -35,7 +35,22 @@
                 <div class="brand-logo">NYX</div>
                 <span class="brand-tagline">AI Interview Coach</span>
             </div>
-            <p class="subtitle">Set up your profile, AI preferences, and API credentials.</p>
+            <div class="setup-intro">
+                <span class="setup-eyebrow">Initial Setup</span>
+                <h1 class="setup-title">Configure your interview workspace</h1>
+                <p class="subtitle">Four quick steps — your profile, AI models, credentials, and shortcuts. Everything can be changed later.</p>
+            </div>
+
+            <!-- Dynamic progress indicator (kept in sync with the active tab) -->
+            <div class="setup-progress" aria-hidden="true">
+                <div class="setup-progress-track">
+                    <div class="setup-progress-segment active" data-segment="0"></div>
+                    <div class="setup-progress-segment" data-segment="1"></div>
+                    <div class="setup-progress-segment" data-segment="2"></div>
+                    <div class="setup-progress-segment" data-segment="3"></div>
+                </div>
+                <span class="setup-progress-label">Step <strong id="setup-step-current">1</strong> of 4</span>
+            </div>
 
             <!-- Tab Navigation -->
             <div class="tabs-nav">

@@ -361,7 +361,8 @@ class LiveInterviewUI {
                 this.conversationStream.appendChild(this.currentInterviewerElement);
                 this.updateEmptyState();
             }
-            this.updateInterviewerMessage(this.currentInterviewerElement.querySelector('.streaming-text').textContent + ' ' + question);
+            // Deepgram interim results are cumulative; replace, do not append.
+            this.updateInterviewerMessage(question);
         } else {
             if (this.currentInterviewerElement) {
                 this.finalizeInterviewerMessage(question);
@@ -397,7 +398,8 @@ class LiveInterviewUI {
                 this.conversationStream.appendChild(this.currentCandidateElement);
                 this.updateEmptyState();
             }
-            this.updateCandidateMessage(this.currentCandidateElement.querySelector('.streaming-text').textContent + ' ' + transcript);
+            // Deepgram interim results are cumulative; replace, do not append.
+            this.updateCandidateMessage(transcript);
         } else {
             if (this.currentCandidateElement) {
                 this.finalizeCandidateMessage(transcript);

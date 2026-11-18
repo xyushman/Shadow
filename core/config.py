@@ -1,6 +1,15 @@
 import os
+import sys
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from dotenv import dotenv_values
+
+# Keep diagnostic prints safe when this module is imported outside main.py
+# (which already does the same guarded reconfigure on a Windows cp1252 console).
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 class Settings(BaseSettings):
     """
@@ -53,6 +62,44 @@ env_settings = Settings(_env_file=".env", _env_file_encoding='utf-8')
 # By passing `env_settings` as keyword arguments, we force its values to take
 # priority over any system environment variables that Pydantic would otherwise load.
 settings = Settings(**env_settings.model_dump())
+
+
+PLACEHOLDER_DEEPGRAM_KEY = "your_deepgram_api_key_here"
+
+
+def config_issues() -> list:
+    """Return human-readable startup problems (empty when config looks sane).
+
+    Used at launch to replace confusing downstream failures (Deepgram 401s,
+    "no providers configured") with a single clear, actionable message.
+    """
+    issues = []
+
+    key = (settings.DEEPGRAM_API_KEY or "").strip().strip('"').strip("'")
+    if not key or key.lower() == PLACEHOLDER_DEEPGRAM_KEY or "your_deepgram" in key.lower():
+        issues.append(
+            "DEEPGRAM_API_KEY is not configured. Live transcription is disabled "
+            "until you add a real key to .env (or the Advanced Config tab)."
+        )
+
+    if not Path("ai_providers.json").exists():
+        issues.append(
+            "ai_providers.json is missing. AI answers will be unavailable until "
+            "provider credentials are configured."
+        )
+
+    return issues
+
+
+def print_startup_diagnostics() -> None:
+    """Print concise, production-friendly startup status."""
+    issues = config_issues()
+    if not issues:
+        print("✅ Configuration check passed.")
+        return
+    print("⚠️  Configuration check found issue(s):")
+    for issue in issues:
+        print(f"   - {issue}")
 
 
 def print_config_debug():
