@@ -24,6 +24,19 @@ class Settings(BaseSettings):
     MAX_CONVERSATION_HISTORY: int = 24
     GENERATE_FULL_ANSWERS: bool = True
     PERSONALIZE_ANSWERS: bool = True
+    COMPACT_ANSWER_PROMPT: bool = True
+
+    # Latency budgets. The vision total must stay below the UI's 45s timeout so
+    # the backend always replies before the client gives up.
+    VISION_TIMEOUT_S: float = 22.0          # per model/key attempt
+    VISION_TOTAL_TIMEOUT_S: float = 35.0    # whole fallback chain
+    VISION_MAX_TOKENS: int = 4096
+    VISION_COMPACT_PROMPT: bool = True
+    LLM_TIMEOUT_S: float = 25.0             # per model/key attempt
+    LLM_TOTAL_TIMEOUT_S: float = 32.0       # whole fallback chain
+    MAX_HISTORY_CHARS: int = 1200           # cap each past AI answer in prompts
+    MAX_VISION_HISTORY_CHARS: int = 350     # vision analyses are much larger
+    MAX_FALLBACK_MODELS_PER_PROVIDER: int = 2
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -68,4 +81,6 @@ def print_config_debug():
     print(f"      MAX_CONVERSATION_HISTORY = {settings.MAX_CONVERSATION_HISTORY}")
     print(f"      GENERATE_FULL_ANSWERS = {settings.GENERATE_FULL_ANSWERS}")
     print(f"      PERSONALIZE_ANSWERS = {settings.PERSONALIZE_ANSWERS}")
+    print(f"      VISION_TOTAL_TIMEOUT_S = {settings.VISION_TOTAL_TIMEOUT_S}")
+    print(f"      LLM_TOTAL_TIMEOUT_S = {settings.LLM_TOTAL_TIMEOUT_S}")
     print(f"   🔑 API Keys: DEEPGRAM={'*' * 20 if settings.DEEPGRAM_API_KEY else 'Not Set'}")

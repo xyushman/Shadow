@@ -290,8 +290,16 @@ export class WebSocketHandler {
                 languages: result.languages
             };
             liveInterviewUI.addVisionAnalysis(result.analysis, metadata);
-        } else if (!result.success && result.error) {
-            liveInterviewUI.addMessage(`❌ Vision analysis failed: ${result.error}`, "system-error");
+        } else if (!result.success) {
+            // The backend now sends a short actionable message in `analysis`
+            // and a machine-readable code in `error`.
+            const friendly = {
+                timeout: 'Vision analysis timed out. Try again with fewer screenshots.',
+                rate_limited: 'Vision models are rate limited right now. Wait a moment or switch provider.',
+                vision_failed: 'Vision analysis failed. Check the selected vision model and try again.'
+            };
+            const message = result.analysis || friendly[result.error] || 'Vision analysis failed.';
+            liveInterviewUI.addMessage(`❌ ${message}`, "system-error");
         }
     }
 
