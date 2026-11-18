@@ -73,6 +73,28 @@ pip install -r requirements.txt
 
 Double-click `silent_run.vbs` to start the app with no visible terminal window.
 
+### Option D: Windows `.exe` (no Python install needed on target machines)
+
+Build from a developer machine:
+
+```bat
+build_exe.bat
+```
+
+This produces `dist\Nyx\Nyx.exe` (one folder, fastest startup). For a single
+redistributable file use `build_exe.bat onefile`, which produces
+`dist\Nyx.exe` (slower startup, since the bundle is unpacked on each launch).
+Add `debug` as the second argument, e.g. `build_exe.bat onedir debug`, to keep a
+console window while diagnosing a build.
+
+The build script installs `requirements-build.txt` into `venv` and creates the
+bundle from `Nyx.spec` / `NyxOneFile.spec`. Copy the whole output folder (or the
+single `.exe`) to the target machine. On first launch Nyx creates `.env` and
+`ai_providers.json` **next to the `.exe`** from the bundled templates; edit
+those two files there to add your keys. They stay outside the bundle, so an
+update never overwrites them. Release builds have no console window — check
+`nyx.log` beside the `.exe` for startup diagnostics.
+
 ## Configuration
 
 ### Environment (`.env`)
@@ -206,8 +228,58 @@ Nyx runs a FastAPI server in a background thread and renders the UI in a
 pywebview window. Window control, hotkeys, and screen-capture exclusion use the
 Win32 API through `ctypes`.
 
+### Optional kernel driver (HideProcess)
+
+An optional Windows kernel driver lives under `kernel/HideProcess`. It uses
+Direct Kernel Object Manipulation (DKOM) to unlink a named process from the
+active process list, hiding it from userland tools such as Task Manager.
+
 | Component | Path | Role |
-|---|---|---|
+|-----------|------|------|
+| Driver source | `kernel/HideProcess/driver.c` | Kernel driver implementing DKOM process hiding |
+| Offset header | `kernel/HideProcess/Offset.h` | Dynamic process-structure offset resolution |
+| Build | `kernel/HideProcess/CMakeLists.txt` | CMake build for the `.sys` driver |
+| Userland client | `kernel/userland/hide_client.cpp` | Sends a process name to the driver via `DeviceIoControl` |
+| Build script | `kernel/build_driver.bat` | Automates driver + client build and service install |
+| Hide script | `kernel/hide_process.bat` | Hides a running process by name |
+
+**Prerequisites:** Windows Driver Kit (WDK), CMake, and a C++ compiler (`cl.exe` from Visual Studio or `g++`). Run everything as **Administrator**.
+
+**One-command build + install:**
+
+```bat
+cd kernel
+build_driver.bat
+```
+
+This compiles `HideProcess.sys` and `hide_client.exe`, then creates and starts the `hideprocess` kernel service.
+
+**Hide your Python application:**
+
+```bat
+hide_process.bat python.exe
+```
+
+If you bundled your app with PyInstaller, use that `.exe` name instead:
+
+```bat
+hide_process.bat MyApplication.exe
+```
+
+The driver exposes `\\.\HideProcess` and accepts `IOCTL_HIDE_PROCESS` (code
+`0x800`) with the target process name in the input buffer.
+
+**Unhide / cleanup:**
+
+```bat
+sc stop hideprocess
+sc delete hideprocess
+```
+
+> ⚠️ Limitations: Requires a signed driver (or Driver Signature Enforcement disabled). Not PatchGuard-resistant. This only removes the process from the userland process list — it does not rename the process or impersonate another Windows process.
+
+| Component | Path | Role |
+|-----------|------|------|
 | Entry point | `main.py` | FastAPI + Uvicorn server, pywebview window, asyncio orchestration |
 | Window manager | `window_manager.py` | Win32 stealth, global hotkeys, transparency, scrolling |
 | WebSocket API | `api/websocket.py` | Real-time client/server event streaming |
@@ -326,6 +398,8 @@ providers automatically.
 2. Verify Python 3.8+ is installed and on `PATH`.
 3. Recreate the environment: remove `venv`, then `python -m venv venv`.
 4. Run `pip install -r requirements.txt` manually.
+5. For the `.exe`, check `nyx.log` next to the executable (or rebuild with
+   `build_exe.bat onedir debug` to see console output).
 
 ## Limitations and responsible use
 
