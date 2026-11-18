@@ -11,18 +11,21 @@ except Exception:
 import tempfile
 import threading
 import time
-from pathlib import Path
+from core.paths import config_path, resource_path
 
 # --- Auto-create .env from .env.example if missing ---
-# This must run BEFORE any first-party import: window_manager and core.config
-# both read .env at import time, so creating it afterwards meant a freshly
-# generated .env had no effect until the next launch.
-_env_path = Path(".env")
-_env_example_path = Path(".env.example")
+# This must run BEFORE any first-party import that reads settings:
+# window_manager and core.config both read .env at import time, so creating it
+# afterwards meant a freshly generated .env had no effect until the next launch.
+# In a frozen build the template comes from the bundle and the writable copy
+# lands next to the .exe (see core.paths).
+_env_path = config_path(".env")
+_env_example_path = resource_path(".env.example")
 
 if not _env_path.exists() and _env_example_path.exists():
+    _env_path.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(_env_example_path, _env_path)
-    print("📄 Created .env from .env.example — please fill in your API keys!")
+    print(f"📄 Created {_env_path} from .env.example — please fill in your API keys!")
 elif not _env_path.exists() and not _env_example_path.exists():
     print("⚠️ No .env or .env.example found. The app may fail to start without a .env file.")
 
@@ -281,12 +284,13 @@ app.include_router(config_api.router)
 
 # Mount the 'web' directory to serve static files (CSS, JS)
 # This makes files in 'web/css' and 'web/js' available under '/static/css' and '/static/js'
-app.mount("/static", StaticFiles(directory="web"), name="static")
+_WEB_DIR = resource_path("web")
+app.mount("/static", StaticFiles(directory=str(_WEB_DIR)), name="static")
 
 @app.get("/")
 async def read_index(request: Request):
     """Serves the main index.html file."""
-    return FileResponse(os.path.join('web', 'index.html'))
+    return FileResponse(str(_WEB_DIR / "index.html"))
 
 # --- Async Server Management ---
 class UvicornServer:
@@ -464,7 +468,6 @@ def setup_webview_window():
             print("   📋 Note: Window WILL be visible in screen recordings during development")
         
         # Set up window transparency and always-on-top
-        import time
         time.sleep(1.0)  # Give window more time to fully initialize
         
         # Find window and configure always-on-top (but NOT transparency yet)

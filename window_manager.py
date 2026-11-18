@@ -9,11 +9,12 @@ import ctypes
 import ctypes.wintypes as wintypes
 import webview
 import time
-import tkinter as tk
 import platform
 from typing import Optional
 from threading import Thread, Timer
 from dotenv import dotenv_values
+
+from core.paths import config_path
 
 # --- Scroll Configuration ---
 # Configurable via .env — controls Alt+Up/Down scroll behaviour
@@ -24,9 +25,9 @@ from dotenv import dotenv_values
 # Read the .env file directly rather than relying on os.environ: nothing in the
 # app calls load_dotenv(), and neither pydantic-settings nor dotenv_values
 # exports to the process environment, so these keys never reached os.environ.
-# Same file and relative path as core/config.py. Precedence is unchanged:
-# real environment variable > .env file > built-in default.
-_ENV_FILE_VALUES = dotenv_values(".env")
+# Same file as core/config.py (next to the .exe in frozen builds). Precedence
+# is unchanged: real environment variable > .env file > built-in default.
+_ENV_FILE_VALUES = dotenv_values(str(config_path(".env")))
 
 
 def _env_setting(name: str, default, minimum, cast=int):
@@ -48,7 +49,7 @@ def _env_setting(name: str, default, minimum, cast=int):
 
 SCROLL_AMOUNT_PX = _env_setting("SCROLL_SPEED_PX", 200, 1)
 SCROLL_INTERVAL_MS = _env_setting("SCROLL_INTERVAL_MS", 50, 10)
-SCREEN_SHARE_SCAN_INTERVAL_S = _env_setting("SCREEN_SHARE_SCAN_INTERVAL_S", 1.0, 0.2, float)
+SCREEN_SHARE_SCAN_INTERVAL_S = _env_setting("SCREEN_SHARE_SCAN_INTERVAL_S", 2.0, 0.2, float)
 
 
 def get_peek_seconds() -> float:
