@@ -523,8 +523,11 @@ class ScreenshotService {
                 this.showNotification('❌ Analysis Failed', result.error || 'Vision AI processing failed', 'error');
             }
 
-            // Always remove processed images from the queue afterwards.
-            this.clearQueue(true);
+            // On timeout keep the screenshots so the user can retry instead of
+            // losing them. Successful/failed analyses are consumed.
+            if (!result.keepQueue) {
+                this.clearQueue(true);
+            }
             
         } catch (error) {
             console.error('❌ Vision processing error:', error);
@@ -559,24 +562,33 @@ class ScreenshotService {
                     );
                 }
                 
-                window.sendSocketMessage('vision_analysis', payload);
-                
-                // Return a promise that resolves when we get the response
+                // Install the resolver BEFORE sending: a fast response can
+                // arrive before a resolver assigned afterwards is in place.
                 return new Promise((resolve, reject) => {
+                    let settled = false;
                     const timeout = setTimeout(() => {
-                        // Hide processing status on timeout
+                        if (settled) return;
+                        settled = true;
+                        window.visionAnalysisResolver = null;
                         if (window.webSocketHandler && window.webSocketHandler.hideVisionProcessingStatus) {
                             window.webSocketHandler.hideVisionProcessingStatus();
                         }
-                        reject(new Error('Vision analysis timeout (45s)'));
-                    }, 45000); // Reduced to 45 seconds to match backend optimization
-                    
-                    // This would be handled by the WebSocket message handler
+                        const error = new Error('Vision analysis timed out. Try again with fewer screenshots.');
+                        error.keepQueue = true;
+                        error.code = 'timeout';
+                        reject(error);
+                    }, 45000);
+
                     window.visionAnalysisResolver = (result) => {
+                        if (settled) return;
+                        settled = true;
                         clearTimeout(timeout);
+                        window.visionAnalysisResolver = null;
                         console.log(`✅ Vision analysis resolver called with result:`, result.success ? 'SUCCESS' : 'FAILED');
                         resolve(result);
                     };
+
+                    window.sendSocketMessage('vision_analysis', payload);
                 });
             } else {
                 throw new Error('WebSocket not available - please ensure interview is active');

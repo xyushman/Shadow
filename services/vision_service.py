@@ -131,8 +131,14 @@ class VisionManager:
             self.error_count += 1
             return False
 
-    async def analyze_screenshots(self, prompt: str, screenshots: List[str], languages: List[str] = None) -> Tuple[str, Dict[str, Any]]:
-        """Analyze screenshots, rotating keys and skipping rate-limited ones."""
+    async def analyze_screenshots(self, prompt: str, screenshots: List[str], languages: List[str] = None,
+                                  timeout: Optional[float] = None, deadline: Optional[float] = None) -> Tuple[str, Dict[str, Any]]:
+        """Analyze screenshots, rotating keys and skipping rate-limited ones.
+
+        ``deadline`` is a shared monotonic timestamp for the whole fallback
+        chain; each attempt is capped by the time left so the UI receives an
+        answer before its own timeout fires.
+        """
         if not self.client:
             return "I'm sorry, the vision AI service is not available at this time.", {
                 "success": False,
@@ -152,7 +158,20 @@ class VisionManager:
             })
         
         print(f"🔍 Analyzing {len(screenshots)} screenshots with {self.provider_name}-{self.model_name}")
-        
+
+        per_attempt = timeout if timeout is not None else settings.VISION_TIMEOUT_S
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 1.0:
+                return "Vision analysis timed out. Try again with fewer screenshots.", {
+                    "success": False,
+                    "error": "timeout",
+                    "provider": self.provider_name,
+                    "model": self.model_name,
+                    "screenshot_count": len(screenshots),
+                }
+            per_attempt = max(1.0, min(per_attempt, remaining - 0.5))
+
         # Proactive round-robin: start every request on the next available key so
         # multiple keys (e.g. several Gemini keys) share rate limits evenly.
         if len(self.api_keys) > 1:
@@ -164,15 +183,19 @@ class VisionManager:
         max_attempts = max(len(self.api_keys), 1)
         last_error = None
         rate_limited = False
-        
+        timed_out = False
+
         for attempt in range(max_attempts):
+            if deadline is not None and time.monotonic() >= deadline - 0.5:
+                timed_out = True
+                break
             try:
                 # Build API params
                 api_params = {
                     "messages": [{"role": "user", "content": content}],
                     "model": self.model_name,
                     "temperature": 0.45,
-                    "max_tokens": 8100,
+                    "max_tokens": settings.VISION_MAX_TOKENS,
                     "top_p": 0.95
                 }
 
@@ -186,7 +209,7 @@ class VisionManager:
                 # Make API call
                 chat_completion = await asyncio.wait_for(
                     self.client.chat.completions.create(**api_params),
-                    timeout=75.0
+                    timeout=per_attempt
                 )
                 
                 analysis = chat_completion.choices[0].message.content.strip()
@@ -215,6 +238,8 @@ class VisionManager:
             except Exception as e:
                 last_error = e
                 err_str = str(e)[:100]
+                if isinstance(e, asyncio.TimeoutError):
+                    timed_out = True
                 if is_rate_limit_error(e):
                     rate_limited = True
                     self._cool_down_current_key(e, attempt + 1)
@@ -228,7 +253,10 @@ class VisionManager:
         self.is_healthy = False
         self.last_error = str(last_error)
         self.error_count += 1
-        if rate_limited:
+        if timed_out:
+            error_msg = "Vision analysis timed out. Try again with fewer screenshots."
+            print(f"⏱️ VISION TIMEOUT: {self.provider_name}-{self.model_name}")
+        elif rate_limited:
             error_msg = (f"Rate limit reached for vision model {self.provider_name} ({self.model_name}). "
                          f"All {max_attempts} key(s) are cooling down.")
             print(f"⏳ ALL VISION KEYS RATE LIMITED: {self.provider_name}-{self.model_name}")
@@ -238,7 +266,7 @@ class VisionManager:
         
         return error_msg, {
             "success": False,
-            "error": "all_keys_failed",
+            "error": "timeout" if timed_out else "all_keys_failed",
             "rate_limited": rate_limited,
             "attempts": max_attempts,
             "provider": self.provider_name,
@@ -404,9 +432,10 @@ class VisionService:
 
         return ordered
     
-    async def analyze_coding_problem(self, provider_name: str, model_name: str, 
-                                   screenshots: List[str], languages: List[str] = None) -> Tuple[str, Dict[str, Any]]:
-        """Analyze coding problem screenshots with fallback across vision models/providers."""
+    async def analyze_coding_problem(self, provider_name: str, model_name: str,
+                                   screenshots: List[str], languages: List[str] = None,
+                                   deadline: Optional[float] = None) -> Tuple[str, Dict[str, Any]]:
+        """Analyze screenshots with a bounded fallback chain across models/providers."""
 
         # Generate comprehensive coding prompt
         prompt = self.generate_coding_analysis_prompt(languages)
@@ -420,7 +449,7 @@ class VisionService:
             pass
 
         candidates = self._vision_candidates(provider_name, model_name)
-        last_analysis = ""
+        deadline = deadline if deadline is not None else time.monotonic() + settings.VISION_TOTAL_TIMEOUT_S
         last_info: Dict[str, Any] = {
             "success": False,
             "error": "vision_model_not_found",
@@ -428,8 +457,20 @@ class VisionService:
             "model": model_name,
             "screenshot_count": len(screenshots)
         }
+        attempted_per_provider: Dict[str, int] = {}
+        saw_rate_limit = False
+        timed_out = False
 
         for idx, (cand_provider, cand_model) in enumerate(candidates):
+            remaining = deadline - time.monotonic()
+            if remaining <= 3.0:
+                timed_out = True
+                break
+            # A rate limit is often account-wide: trying six models from the
+            # same provider just burns the remaining time budget.
+            if attempted_per_provider.get(cand_provider, 0) >= settings.MAX_FALLBACK_MODELS_PER_PROVIDER:
+                continue
+
             manager = self.get_vision_manager(cand_provider, cand_model)
             if not manager:
                 continue
@@ -437,8 +478,11 @@ class VisionService:
                 print(f"⏭️ Skipping vision {cand_provider}/{cand_model} — all keys rate limited")
                 continue
 
+            attempted_per_provider[cand_provider] = attempted_per_provider.get(cand_provider, 0) + 1
             try:
-                analysis, info = await manager.analyze_screenshots(prompt, screenshots, languages)
+                analysis, info = await manager.analyze_screenshots(
+                    prompt, screenshots, languages, deadline=deadline
+                )
             except Exception as e:
                 print(f"❌ Vision call failed for {cand_provider}/{cand_model}: {e}")
                 last_info = {
@@ -448,11 +492,14 @@ class VisionService:
                     "model": cand_model,
                     "screenshot_count": len(screenshots)
                 }
-                last_analysis = str(e)
                 continue
 
-            last_analysis = analysis
             last_info = info
+            if info.get("rate_limited"):
+                saw_rate_limit = True
+            if info.get("error") == "timeout":
+                timed_out = True
+
             if info.get("success"):
                 if (cand_provider, cand_model) != (provider_name, model_name):
                     info["vision_fallback"] = True
@@ -462,18 +509,54 @@ class VisionService:
 
             print(f"⚠️ Vision {cand_provider}/{cand_model} failed; trying next option...")
 
-        # All candidates failed — return the last error.
-        error_msg = last_analysis if last_analysis else f"Vision model {provider_name} - {model_name} not available."
+        # All candidates failed — return a short, actionable message. Raw SDK
+        # errors stay in last_info['detail'] for the logs.
+        if saw_rate_limit:
+            error_msg = "Vision models are rate limited right now. Wait a moment or switch provider."
+            error_code = "rate_limited"
+        elif timed_out:
+            error_msg = "Vision analysis timed out. Try again with fewer screenshots."
+            error_code = "timeout"
+        else:
+            error_msg = "Vision analysis failed. Check the selected vision model and try again."
+            error_code = last_info.get("error") or "vision_failed"
+
         result = dict(last_info)
-        result.setdefault("success", False)
-        result["screenshot_count"] = len(screenshots)
-        result["provider"] = last_info.get("provider", provider_name)
-        result["model"] = last_info.get("model", model_name)
+        result.update({
+            "success": False,
+            "error": error_code,
+            "detail": str(last_info.get("error") or "")[:300],
+            "screenshot_count": len(screenshots),
+            "provider": last_info.get("provider", provider_name),
+            "model": last_info.get("model", model_name),
+        })
         return error_msg, result
     
     def generate_coding_analysis_prompt(self, languages: List[str] = None) -> str:
-        """Generate a comprehensive prompt for analyzing screenshots, capable of handling coding problems, MCQs, or a mix."""
-        
+        """Generate a prompt for analyzing screenshots, capable of handling coding problems, MCQs, or a mix."""
+        # The long template below was several thousand tokens per request. That
+        # dominated latency (and output-token cost) without improving answers
+        # for live interviews, so use the compact form by default.
+        if settings.VISION_COMPACT_PROMPT:
+            primary = "Java"
+            if languages:
+                programming = [lang for lang in languages if lang.lower() != 'sql']
+                if programming:
+                    primary = programming[0]
+            return f"""Analyze the interview screenshots and answer what is visible in them.
+
+Identify the content type first: MCQ, coding problem, aptitude, or other.
+
+- MCQs: for each question, give the correct option and a one or two sentence reason.
+- Coding: restate the problem briefly, give ONE correct solution in {primary} with a short explanation, time and space complexity, and key edge cases. If a second approach is useful, describe it in two or three sentences without a second full implementation.
+- Other: summarize what is readable and answer it directly.
+
+Rules:
+- Use only what is visible in the screenshots. Do not invent question text or options.
+- If the images are unreadable, say exactly what is illegible instead of guessing.
+- Be concise and use markdown. No preamble or closing pleasantries.
+"""
+
         # Determine primary programming language and context
         primary_language = "Java"  # Default fallback
         language_context = ""

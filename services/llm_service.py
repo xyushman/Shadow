@@ -117,12 +117,13 @@ class LLMManager:
             return False
 
     async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None,
-                            add_to_context: bool = True) -> Tuple[str, Dict[str, Any]]:
+                            add_to_context: bool = True, deadline: Optional[float] = None) -> Tuple[str, Dict[str, Any]]:
         """Get an AI answer, rotating keys and skipping rate-limited ones.
 
         ``add_to_context`` is False when the caller (MultiLLMManager) has already
         recorded the question once, so provider/model fallbacks do not create
-        duplicate conversation entries.
+        duplicate conversation entries. ``deadline`` bounds the whole fallback
+        chain so one slow model cannot stall the interview.
         """
         if not self.client:
             return "I'm sorry, the AI service is not available at this time.", {
@@ -150,6 +151,18 @@ class LLMManager:
             prompt = get_quick_response_prompt(question, self.context_manager)
 
         print(f"🎯 Processing with {self.provider_name}-{self.model_name}: '{question[:100]}...'")
+
+        per_attempt = settings.LLM_TIMEOUT_S
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 1.0:
+                return "The AI service is taking too long to respond. Please try again.", {
+                    "success": False,
+                    "error": "timeout",
+                    "provider": self.provider_name,
+                    "model": self.model_name,
+                }
+            per_attempt = max(1.0, min(per_attempt, remaining - 0.5))
 
         # Proactive round-robin: start every request on the next available key so
         # multiple keys (e.g. several Gemini keys) share rate limits evenly.
@@ -188,11 +201,13 @@ class LLMManager:
                     api_params["stream"] = True
                     full_answer = ""
                     streaming_active = True
-                    try:
-                        async for chunk in await self.client.chat.completions.create(**api_params):
+
+                    async def _consume_stream():
+                        nonlocal full_answer, streaming_active
+                        stream = await self.client.chat.completions.create(**api_params)
+                        async for chunk in stream:
                             if not streaming_active:
                                 break
-
                             if chunk.choices and chunk.choices[0].delta and chunk.choices[0].delta.content:
                                 content_chunk = chunk.choices[0].delta.content
                                 full_answer += content_chunk
@@ -202,11 +217,13 @@ class LLMManager:
                                         if callback_result is False:
                                             streaming_active = False
                                             break
-                                    except Exception as e:
+                                    except Exception:
                                         streaming_active = False
                                         break
-                        answer = full_answer.strip()
 
+                    try:
+                        await asyncio.wait_for(_consume_stream(), timeout=per_attempt)
+                        answer = full_answer.strip()
                     except Exception as stream_err:
                         print(f"⚠️ Streaming failed for {self.provider_name} key #{self._key_index}: {stream_err}")
                         raise stream_err  # Let the outer retry loop handle it
@@ -214,7 +231,7 @@ class LLMManager:
                     # Non-streaming API call
                     chat_completion = await asyncio.wait_for(
                         self.client.chat.completions.create(**api_params),
-                        timeout=30.0
+                        timeout=per_attempt
                     )
                     answer = chat_completion.choices[0].message.content.strip()
 
@@ -545,7 +562,8 @@ class MultiLLMManager:
             }
         return {"key": "unknown", "provider": "Unknown", "model": "Unknown", "description": "Unknown"}
 
-    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None) -> Tuple[str, Dict[str, Any]]:
+    async def get_ai_answer(self, question: str, stream_callback=None, response_style: str = None,
+                            deadline: Optional[float] = None) -> Tuple[str, Dict[str, Any]]:
         """Generate an answer with provider and model-level fallback.
 
         Order: the active preset's model, that provider's alternate models, the
@@ -555,6 +573,8 @@ class MultiLLMManager:
         """
         if not self.providers:
             return "No AI providers are configured.", {"error": "no_providers"}
+
+        deadline = deadline if deadline is not None else time.monotonic() + settings.LLM_TOTAL_TIMEOUT_S
 
         # Record the question once, so provider/model fallbacks do not each add
         # a duplicate conversation entry.
@@ -574,8 +594,12 @@ class MultiLLMManager:
         original_preset = self.active_preset_key
         stream_used = False
         saw_rate_limit = False
+        timed_out = False
 
         for preset_key in preset_order:
+            if deadline - time.monotonic() <= 3.0:
+                timed_out = True
+                break
             manager = self.providers[preset_key]
 
             # Build the attempt order for this preset: selected model first
@@ -586,15 +610,20 @@ class MultiLLMManager:
             else:
                 print(f"⏭️ Skipping {manager.provider_name}/{manager.model_name} — all keys rate limited")
 
-            for fallback in self.model_fallbacks.get(preset_key, []):
+            for fallback in self.model_fallbacks.get(preset_key, [])[:settings.MAX_FALLBACK_MODELS_PER_PROVIDER]:
                 if fallback.has_available_key():
                     candidates.append((fallback, True))
 
             for candidate, is_model_fallback in candidates:
+                if deadline - time.monotonic() <= 2.0:
+                    timed_out = True
+                    break
                 callback = stream_callback if (not stream_used and not is_model_fallback) else None
                 answer, result_info = await candidate.get_ai_answer(
-                    question, callback, response_style, add_to_context=False
+                    question, callback, response_style, add_to_context=False, deadline=deadline
                 )
+                if result_info.get("error") == "timeout":
+                    timed_out = True
                 stream_used = True
 
                 if result_info.get("success"):
@@ -623,9 +652,14 @@ class MultiLLMManager:
                 print(f"⚠️ {candidate.provider_name}/{candidate.model_name} {reason}; trying next option...")
 
         # All providers and models failed
-        error_msg = "All AI providers are currently unavailable. Please try again in a moment."
+        if timed_out:
+            error_msg = "The AI service is taking too long to respond. Please try again."
+        elif saw_rate_limit:
+            error_msg = "AI providers are rate limited right now. Wait a moment or switch provider."
+        else:
+            error_msg = "All AI providers are currently unavailable. Please try again in a moment."
         return error_msg, {
-            "error": "all_providers_failed",
+            "error": "timeout" if timed_out else "all_providers_failed",
             "rate_limited": saw_rate_limit,
             "attempted_providers": list(self.providers.keys())
         }

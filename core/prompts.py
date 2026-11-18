@@ -58,11 +58,76 @@ RESPONSE_STYLE_DIRECTIVES = {
 }
 
 
+def _compact_answer_prompt(question: str, context_manager: PersistentContextManager,
+                           response_style: str = None) -> str:
+    """Small prompt with the same grounding but a bounded token cost.
+
+    The long template below spends several thousand tokens on instructions on
+    every question. In a live interview that added seconds of latency and made
+    token-based rate limits much more likely.
+    """
+    complete = context_manager.get_complete_context()
+    persistent = complete.get('persistent') or {}
+    history = complete.get('conversation_history') or []
+
+    parts = [
+        "You are helping a candidate answer a live interview question. "
+        "Give a direct, accurate answer they can speak aloud or reuse."
+    ]
+
+    style_key = (response_style or '').lower()
+    if style_key in RESPONSE_STYLE_DIRECTIVES:
+        parts.append(RESPONSE_STYLE_DIRECTIVES[style_key])
+
+    profile = build_unlimited_candidate_profile(persistent, settings.PERSONALIZE_ANSWERS)
+    if profile:
+        parts.append("CANDIDATE PROFILE:\n" + profile)
+
+    mode_hints = {
+        'amazon_oa': "Amazon OA: coding plus Leadership Principles questions.",
+        'infosys_oa': "Infosys OA: coding only.",
+        'tcs_oa': "TCS OA: aptitude plus coding.",
+        'all_oa': "General OA: adapt to the question format.",
+    }
+    hint = mode_hints.get(persistent.get('interview_type', 'live_interview'))
+    if hint:
+        parts.append("SESSION MODE: " + hint)
+
+    feedback = complete.get('feedback_notes') or []
+    if feedback:
+        parts.append("PREVIOUS ANSWER FEEDBACK:\n" + "\n".join(f"- {n}" for n in feedback[-3:]))
+
+    if settings.INCLUDE_CONVERSATION_HISTORY and history:
+        parts.append("RECENT HISTORY (context only, do not re-answer):")
+        for i, exchange in enumerate(history[-6:], 1):
+            if exchange.get('interviewer_question'):
+                parts.append(f"{i}. Interviewer: {exchange['interviewer_question']}")
+            if exchange.get('candidate_response'):
+                parts.append(f"   Candidate: {exchange['candidate_response']}")
+            if exchange.get('ai_response'):
+                response = exchange['ai_response']
+                limit = (settings.MAX_VISION_HISTORY_CHARS
+                         if response.startswith('[VISION ANALYSIS]')
+                         else settings.MAX_HISTORY_CHARS)
+                if len(response) > limit:
+                    response = response[:limit].rstrip() + " … [truncated]"
+                parts.append(f"   Assistant: {response}")
+
+    parts.append(f"CURRENT QUESTION: {question}")
+    parts.append(
+        "Answer only the current question. Use concise markdown, prefer one strong "
+        "solution with complexity where relevant, and do not restate the question."
+    )
+    return "\n".join(parts)
+
+
 def get_interview_answer_prompt(question: str, context_manager: PersistentContextManager, response_style: str = None) -> str:
     """
     Generate AI prompt with guaranteed persistent context + recent conversation history.
     NO TOKEN LIMITS - includes complete resume and job description.
     """
+    if settings.COMPACT_ANSWER_PROMPT:
+        return _compact_answer_prompt(question, context_manager, response_style)
     
     complete_context = context_manager.get_complete_context()
     persistent_context = complete_context['persistent']
@@ -181,8 +246,14 @@ ACCURACY (ANTI-HALLUCINATION):
             if exchange.get('candidate_response'):
                 prompt_parts.append(f"           ↳ CANDIDATE: {exchange['candidate_response']}")
             if exchange.get('ai_response'):
-                # Include full AI response for complete context
+                # Bound history size: 24 full answers (plus vision analyses of
+                # several thousand tokens each) made prompts too large to answer
+                # quickly and burned through token-based rate limits.
                 ai_response = exchange['ai_response']
+                is_vision = ai_response.startswith("[VISION ANALYSIS]")
+                limit = settings.MAX_VISION_HISTORY_CHARS if is_vision else settings.MAX_HISTORY_CHARS
+                if len(ai_response) > limit:
+                    ai_response = ai_response[:limit].rstrip() + " … [truncated]"
                 prompt_parts.append(f"           ↳ AI ASSISTANT: {ai_response}")
             prompt_parts.append("")
         prompt_parts.append("=" * 100)
