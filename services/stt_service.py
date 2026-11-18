@@ -261,16 +261,18 @@ class DeepgramManager:
                 if len(transcript.strip()) > 0:  # Only process non-empty transcripts
                     # Check if this is a final result or interim
                     is_final = getattr(result, 'is_final', True)
-                    
-                    # Debug logging to track final vs interim
-                    result_type = "FINAL" if is_final else "interim"
-                    print(f"🔍 Deepgram result type: {result_type}, is_final: {is_final}")
-                    
+
+                    # Per-result logging is extremely noisy with interim results;
+                    # keep it behind DEV_MODE so production logs stay readable.
+                    if settings.DEV_MODE:
+                        result_type = "FINAL" if is_final else "interim"
+                        print(f"🔍 Deepgram result type: {result_type}, is_final: {is_final}")
+
                     # Get speaker from words array (Deepgram's diarization format)
-                    speaker = 0  # Default to candidate (when diarization is disabled, all speech is from speaker 0)
+                    speaker = 0  # Fallback; the session maps speaker 0 to the first voice (interviewer)
                     
-                    # Only try to extract speaker info if diarization was enabled
-                    # When diarization is disabled, Deepgram doesn't provide speaker information
+                    # Diarization is enabled, so per-word speaker labels are available.
+                    # If they are missing for any reason, keep the speaker 0 fallback.
                     try:
                         if hasattr(alternative, 'words') and len(alternative.words) > 0:
                             # Use the speaker of the first word
@@ -291,8 +293,9 @@ class DeepgramManager:
                         await self.send_final_result(speaker, transcript.strip())
                     else:
                         # Show interim results immediately for real-time feedback
-                        print(f"📝 TRANSCRIPT (interim): Speaker {speaker} - '{transcript.strip()}'")
-                        
+                        if settings.DEV_MODE:
+                            print(f"📝 TRANSCRIPT (interim): Speaker {speaker} - '{transcript.strip()}'")
+
                         # Send interim updates to client for real-time display
                         interim_data = {
                             "speaker": speaker,

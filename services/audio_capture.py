@@ -133,13 +133,14 @@ class NativeAudioCapture:
         except Exception:
             self.stop()
             raise
-        for name in ("mic", "system"):
-            t = threading.Thread(
-                target=self._mixer_loop, args=(name,), daemon=True,
-                name=f"shadow-audio-{name}",
-            )
-            t.start()
-            self._threads.append(t)
+        # One mixer thread handles both sources. Two independent threads would
+        # send mic and loopback as separate Deepgram streams instead of mixing
+        # the interviewer and candidate into one diarized conversation.
+        t = threading.Thread(
+            target=self._mixer_loop, daemon=True, name="nyx-audio-mixer",
+        )
+        t.start()
+        self._threads.append(t)
         print("Native audio capture started (no browser permission required).")
 
     def stop(self):
@@ -236,35 +237,51 @@ class NativeAudioCapture:
     # --- mixing ----------------------------------------------------------
 
     def _pop(self, buf, want):
-        with self._lock:
-            if not buf:
-                return ZERO
-            have = 0
-            for a in buf:
-                if have + a.size > want:
-                    break
-                have += a.size
-            if have == 0:
-                return ZERO
-            joined = np.concatenate(buf[:max(1, len(buf) - 1)])
-            if joined.size > want:
-                rest = joined[want:]
-                del buf[:len(buf) - 1]
-                buf.insert(0, rest)
-                return joined[:want]
-            del buf[: len(buf) - 1]
-            return joined
+        """Take up to ``want`` samples from the front of ``buf``.
 
-    def _mixer_loop(self, kind):
-        buffer = self._mic_buf if kind == "mic" else self._sys_buf
+        The previous implementation returned silence whenever the first queued
+        callback chunk was larger than the tick size (1024 > 480), so no audio
+        ever reached Deepgram. Consume partial chunks instead.
+        """
+        if want <= 0:
+            return ZERO
+        with self._lock:
+            out = ZERO
+            while out.size < want and buf:
+                chunk = buf[0]
+                take = min(want - out.size, chunk.size)
+                piece = chunk[:take]
+                out = piece.copy() if out.size == 0 else np.concatenate([out, piece])
+                if take >= chunk.size:
+                    buf.pop(0)
+                else:
+                    buf[0] = chunk[take:]
+            return out
+
+    def _mixer_loop(self):
         rate = int(TICK_SECONDS * TARGET_RATE)
         acc = ZERO
         while self._running:
             time.sleep(TICK_SECONDS)
-            chunk = self._pop(buffer, rate)
-            if chunk.size < rate:
-                chunk = np.concatenate([chunk, np.zeros(rate - chunk.size, dtype=np.float32)])
-            acc = chunk if acc.size == 0 else np.concatenate([acc, chunk])
+            mic = self._pop(self._mic_buf, rate)
+            system = self._pop(self._sys_buf, rate)
+            if mic.size < rate:
+                mic = np.concatenate([mic, np.zeros(rate - mic.size, dtype=np.float32)])
+            if system.size < rate:
+                system = np.concatenate([system, np.zeros(rate - system.size, dtype=np.float32)])
+
+            state = {}
+            if self.get_state is not None:
+                try:
+                    state = self.get_state() or {}
+                except Exception:
+                    state = {}
+            # Muting the microphone must not mute the interviewer's loopback.
+            if state.get("is_muted"):
+                mic = ZERO
+
+            mixed = mic + system
+            acc = mixed if acc.size == 0 else np.concatenate([acc, mixed])
             while acc.size >= BATCH_SAMPLES:
                 self._emit(acc[:BATCH_SAMPLES])
                 acc = acc[BATCH_SAMPLES:]
@@ -280,9 +297,6 @@ class NativeAudioCapture:
                 state = {}
         if state.get("is_universally_muted"):
             return
-        if state.get("is_muted"):
-            # Mic muted: only the interviewer's voice is on the wire.
-            samples = samples * 0.0
         mixed = np.clip(samples * MIX_GAIN, -1.0, 1.0)
         pcm = (mixed * 0x7FFF).astype(np.int16)
         payload = pcm.tobytes()

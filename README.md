@@ -7,7 +7,7 @@ excluded from screen capture and hidden from the taskbar, so it stays out of the
 way of whatever you are doing.
 
 The primary target is **Windows 10/11**. A macOS port is in progress on the
-[`macos`](https://github.com/Rkcr7/Aura-AI/tree/macos) branch.
+[`macos`](https://github.com/xyushman/Shadow/tree/macos) branch.
 
 [![Windows 10/11](https://img.shields.io/badge/Windows-10%2F11-0078D6?style=flat&logo=windows&logoColor=white)](#requirements)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8+-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
@@ -15,8 +15,13 @@ The primary target is **Windows 10/11**. A macOS port is in progress on the
 
 ## Features
 
-- **Real-time transcription.** Deepgram speech-to-text with continuous streaming,
-  capturing both the interviewer's questions and your own responses.
+- **Real-time transcription.** Deepgram speech-to-text with continuous streaming
+  and speaker diarization. Both the interviewer and your own responses appear
+  live in the conversation, each with the correct speaker label.
+- **Prompt-free audio.** On Windows, Nyx reads the microphone and system audio
+  directly through WASAPI (including loopback), so there is no browser permission
+  dialog or "sharing your screen" badge. A browser capture path is used only as a
+  fallback if native devices are unavailable.
 - **Answer generation.** Multi-provider LLM support (Cerebras, Groq, Gemini,
   OpenRouter) with primary/secondary models, automatic failover, and per-provider
   API key rotation.
@@ -39,7 +44,7 @@ The primary target is **Windows 10/11**. A macOS port is in progress on the
 
 | Requirement | Details |
 |---|---|
-| Operating system | Windows 10 or 11 (fully supported). macOS is a work-in-progress port on the [`macos`](https://github.com/Rkcr7/Aura-AI/tree/macos) branch. |
+| Operating system | Windows 10 or 11 (fully supported). macOS is a work-in-progress port on the [`macos`](https://github.com/xyushman/Shadow/tree/macos) branch. |
 | Python | 3.8 or newer. On Windows, enable **Add Python to PATH** during installation. |
 | Microphone | Any input device (built-in, headset, or USB). |
 | Internet | Required for speech-to-text and LLM provider calls. |
@@ -55,8 +60,8 @@ installs/updates dependencies, and starts the app.
 ### Option B: Manual setup
 
 ```bash
-git clone https://github.com/Rkcr7/Aura-AI
-cd Aura-AI
+git clone https://github.com/xyushman/Shadow
+cd Shadow
 
 python -m venv venv
 venv\Scripts\activate
@@ -72,8 +77,10 @@ Double-click `silent_run.vbs` to start the app with no visible terminal window.
 
 ### Environment (`.env`)
 
-Copy `.env.example` to `.env` and fill in your values. At minimum, set the
-Deepgram key. `run.bat` warns if `.env` is missing.
+On first launch the app creates `.env` from `.env.example` automatically. Fill
+in your keys there, or use the **Advanced Config** tab in the UI. At minimum, set
+the Deepgram key. On every launch a short configuration check reports missing or
+placeholder credentials; the full debug dump is only shown when `DEV_MODE=true`.
 
 ```env
 # API keys
@@ -89,6 +96,19 @@ INCLUDE_CONVERSATION_HISTORY=true
 MAX_CONVERSATION_HISTORY=24    # Past exchanges to include
 GENERATE_FULL_ANSWERS=true     # Full answers vs. brief hints
 PERSONALIZE_ANSWERS=true       # Tailor answers to your resume/JD
+COMPACT_ANSWER_PROMPT=true     # Small, low-latency prompts (recommended)
+
+# Latency budgets (seconds) — keep totals below the UI's 45s timeout
+VISION_TIMEOUT_S=22            # Per vision model/key attempt
+VISION_TOTAL_TIMEOUT_S=35      # Whole vision fallback chain
+LLM_TIMEOUT_S=25               # Per text model/key attempt
+LLM_TOTAL_TIMEOUT_S=32         # Whole text fallback chain
+MAX_HISTORY_CHARS=1200         # Truncate each past answer in prompts
+MAX_VISION_HISTORY_CHARS=350   # Truncate past vision analyses
+MAX_FALLBACK_MODELS_PER_PROVIDER=2
+
+# Native audio — prompt-free mic + system capture (WASAPI loopback)
+# Picked automatically when available; no browser permission needed.
 
 # Stealth
 STEALTH_MODE=invisible         # invisible (hide-by-default) | blackout
@@ -267,12 +287,17 @@ providers automatically.
 
 ## Troubleshooting
 
-**Microphone not working**
+**No audio or transcript during the live interview**
 
-1. Check Windows privacy settings: Settings, Privacy, Microphone.
-2. Verify `DEEPGRAM_API_KEY` in `.env`.
-3. Close other apps that hold the microphone (Zoom, Teams, and so on).
-4. With `DEV_MODE=true`, check the browser console (F12) for errors.
+1. Verify `DEEPGRAM_API_KEY` in `.env` (a placeholder key is reported at startup).
+2. Check Windows privacy settings: Settings, Privacy, Microphone.
+3. Pick the correct input device in the pre-flight check; the selected device is
+   passed to the native WASAPI capture.
+4. Play some audio and speak — both your voice and the interviewer's voice should
+   appear live with separate speaker labels.
+5. If native capture is unavailable, Nyx falls back to browser capture, which
+   requires granting microphone and screen-audio permissions.
+6. With `DEV_MODE=true`, check the terminal and browser console (F12) for errors.
 
 **AI responses failing or slow**
 

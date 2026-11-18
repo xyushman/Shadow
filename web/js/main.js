@@ -53,11 +53,21 @@ const startButton = document.getElementById('start-interview-button');
 const backButton = document.getElementById('back-to-onboarding-btn');
 
 // --- Tab Management ---
+function updateSetupProgress(activeIndex) {
+    const segments = document.querySelectorAll('.setup-progress-segment');
+    segments.forEach((seg, i) => {
+        seg.classList.toggle('active', i === activeIndex);
+        seg.classList.toggle('complete', i < activeIndex);
+    });
+    const label = document.getElementById('setup-step-current');
+    if (label) label.textContent = String(activeIndex + 1);
+}
+
 function setupTabs() {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const tabPanes = document.querySelectorAll('.tab-pane');
 
-    tabBtns.forEach(btn => {
+    tabBtns.forEach((btn, index) => {
         btn.addEventListener('click', () => {
             const targetId = btn.getAttribute('data-tab');
 
@@ -69,6 +79,8 @@ function setupTabs() {
             tabPanes.forEach(p => p.classList.remove('active'));
             const targetPane = document.getElementById(targetId);
             if (targetPane) targetPane.classList.add('active');
+
+            updateSetupProgress(index);
 
             // Refresh advanced config if switching to that tab
             if (targetId === 'advanced-config-tab') {

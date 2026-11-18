@@ -6,8 +6,8 @@ Thanks for your interest in contributing.
 
 ```bash
 # 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/Aura-AI.git
-cd Aura-AI
+git clone https://github.com/YOUR_USERNAME/Shadow.git
+cd Shadow
 
 # 2. Create a virtual environment
 python -m venv venv
@@ -72,7 +72,7 @@ alternatives you considered.
 ## Project structure
 
 ```
-Aura-AI/
+Shadow/
 ├── main.py                 # App entry point: FastAPI server + pywebview
 ├── window_manager.py       # Stealth mode, hotkeys, Win32 integration
 ├── api/                    # FastAPI route handlers

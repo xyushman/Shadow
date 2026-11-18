@@ -22,7 +22,7 @@ echo [1/5] Checking Python installation...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo ERROR: Python is not installed or not in PATH!
-    echo Please install Python 3.7+ from https://python.org
+    echo Please install Python 3.8+ from https://python.org
     echo Make sure to check "Add Python to PATH" during installation
     exit /b 1
 )
@@ -76,11 +76,11 @@ if errorlevel 1 (
 echo    Dependencies installed successfully
 echo.
 
-:: Check if .env file exists (the app may need it)
+:: The app auto-creates .env from .env.example on first launch. Remind the
+:: user to fill in real keys so live transcription and AI answers work.
 if not exist ".env" (
-    echo WARNING: .env file not found!
-    echo The application may require environment variables.
-    echo Consider creating a .env file if the app doesn't start properly.
+    echo NOTE: .env will be created from .env.example on first launch.
+    echo Remember to add a real DEEPGRAM_API_KEY and provider keys.
     echo.
 )
 

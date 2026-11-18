@@ -217,15 +217,19 @@ export class WebSocketHandler {
     }
 
     handleTranscriptUpdate(payload) {
-        // With diarization disabled, all speech comes from speaker 0 and should be labeled as Interviewer
-        // With diarization enabled, speaker 0 = candidate, speaker 1+ = interviewer(s)
-        const speakerId = payload.speaker !== undefined ? payload.speaker : 0;
-        
-        // Since diarization is disabled, all speech (speaker 0) should be treated as interviewer
-        if (payload.is_final) {
-            liveInterviewUI.addInterviewerQuestion(payload.transcript, false);
+        const text = (payload.transcript || '').trim();
+        if (!text) return;
+
+        // The backend assigns stable roles from diarized speaker numbers.
+        // Fall back to speaker 0 = interviewer for older payloads.
+        const isInterviewer = payload.role
+            ? payload.role === 'interviewer'
+            : (payload.speaker || 0) === 0;
+
+        if (isInterviewer) {
+            liveInterviewUI.addInterviewerQuestion(text, !payload.is_final);
         } else {
-            liveInterviewUI.addInterviewerQuestion(payload.transcript, true);
+            liveInterviewUI.addCandidateTranscript(text, !payload.is_final);
         }
     }
     

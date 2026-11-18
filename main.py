@@ -39,7 +39,7 @@ from fastapi.staticfiles import StaticFiles
 import window_manager  # Our new module for capture protection
 from api import websocket, config_api
 from api.session_manager import session_manager
-from core.config import settings, print_config_debug
+from core.config import settings, print_config_debug, print_startup_diagnostics
 
 
 def find_free_port(preferred: int = 8002) -> int:
@@ -61,8 +61,11 @@ def find_free_port(preferred: int = 8002) -> int:
 # DEV_MODE is now controlled via .env file - see core/config.py
 DEV_MODE = settings.DEV_MODE
 
-# Print configuration debug info at startup
-print_config_debug()
+# Concise, production-friendly config check on every launch. The full debug
+# dump is verbose and only useful when DEV_MODE is enabled.
+print_startup_diagnostics()
+if DEV_MODE:
+    print_config_debug()
 
 # --- Global Command Monitor ---
 class GlobalCommandMonitor:
